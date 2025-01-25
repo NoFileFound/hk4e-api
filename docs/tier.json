@@ -1,0 +1,12 @@
+tiers (Array):
+{
+	"tier_id": "Tier_xx",
+	"t_price": [
+		"enable": 1,
+		"country": "CN",
+		"currency": "CNY",
+		"price": "30000",
+		"symbol": "￥",
+		"amount_display": ""
+	]
+}
