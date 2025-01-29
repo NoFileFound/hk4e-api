@@ -1,8 +1,9 @@
 package org.httpsrv.controllers.account;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
 import org.httpsrv.algorithms.RSA;
 import org.httpsrv.algorithms.Random;
 import org.httpsrv.conf.Config;
@@ -11,6 +12,7 @@ import org.httpsrv.data.body.LoginBody;
 import org.httpsrv.database.Database;
 import org.httpsrv.database.entity.Account;
 import org.httpsrv.thirdparty.GeoIP;
+import org.httpsrv.utils.Utils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,6 +30,80 @@ public class Passport implements org.httpsrv.ResponseHandler {
     }
 
     /**
+     *  Source: <a href="https://hk4e-sdk-os-static.hoyoverse.com/hk4e_global/account/ma-passport/api/updateUserMarketingStatus">https://hk4e-sdk-os-static.hoyoverse.com/hk4e_global/account/ma-passport/api/updateUserMarketingStatus</a><br><br>
+     *  Method: POST<br><br>
+     *  Parameters:<br>
+     *      - entity: Entity<br>
+     *      - marketing_status: Marketing status<br>
+     */
+    @PostMapping("updateUserMarketingStatus")
+    public ResponseEntity<LinkedHashMap<String, Object>> SendUpdateMarketingStatus() {
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", null));
+    }
+
+    /**
+     *  Source: <a href="https://hk4e-sdk-os-static.hoyoverse.com/hk4e_global/account/ma-passport/api/logout">https://hk4e-sdk-os-static.hoyoverse.com/hk4e_global/account/ma-passport/api/logout</a><br><br>
+     *  Method: POST<br><br>
+     */
+    @PostMapping("logout")
+    public ResponseEntity<LinkedHashMap<String, Object>> SendLogout() {
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", null));
+    }
+
+    /**
+     *  Source: <a href="https://hk4e-sdk-os-static.hoyoverse.com/hk4e_global/account/ma-passport/api/verifySToken">https://hk4e-sdk-os-static.hoyoverse.com/hk4e_global/account/ma-passport/api/verifySToken</a><br><br>
+     *  Method: POST<br><br>
+     *  Parameters:<br>
+     *      - stoken: Stoken<br>
+     */
+    @PostMapping(value = "verifySToken")
+    public ResponseEntity<LinkedHashMap<String, Object>> SendVerifySToken(@CookieValue(value = "stoken") String stoken, HttpServletRequest request) {
+        if(stoken == null || stoken.isEmpty()) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_MA_PASSPORT_INVALID_PARAMETER, "Parameter error", null));
+        }
+
+        Account acc = Database.findAccountByStoken(stoken);
+        if(acc == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_FAILED, "登录失效，请重新登录", null));
+        }
+
+        LinkedHashMap<String, Object> data = new LinkedHashMap<>();
+        data.put("user_info", new LinkedHashMap<>() {{
+            put("account_name", acc.getName());
+            put("aid", acc.getId());
+            put("area_code", Utils.maskString(acc.getMobileArea()));
+            put("country", GeoIP.getCountryCode(request.getRemoteAddr()));
+            put("email", Utils.maskString(acc.getEmail()));
+            put("identity_code", Utils.maskString(acc.getIdentityCard()));
+            put("is_email_verify", acc.getIsEmailVerified() ? 1 : 0);
+            put("links", new ArrayList<>());
+            put("mid", "12ya9usebi_hy");
+            put("mobile", Utils.maskString(acc.getMobile()));
+            put("realname", Utils.maskString(acc.getRealname()));
+            put("rebind_area_code", "");
+            put("rebind_mobile", "");
+            put("rebind_mobile_time", "0");
+            put("safe_area_code", Utils.maskString(acc.getSafeMobileArea()));
+            put("safe_mobile", Utils.maskString(acc.getSafeMobile()));
+            put("password_time", System.currentTimeMillis() / 1000);
+            put("unmasked_email", "");
+            put("unmasked_email_type", 0);
+        }});
+        data.put("tokens", new ArrayList<>(List.of(
+                new LinkedHashMap<>() {{
+                    put("token_type", 1);
+                    put("token", stoken);
+                }}
+        )));
+        data.put("ext_user_info", new LinkedHashMap<>() {{
+            put("guardian_email", "");
+            put("birth", "0");
+        }});
+
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
+    }
+
+    /**
      *  Source: <a href="https://hk4e-sdk-os-static.hoyoverse.com/hk4e_global/account/ma-passport/api/appLoginByPassword">https://hk4e-sdk-os-static.hoyoverse.com/hk4e_global/account/ma-passport/api/appLoginByPassword</a><br><br>
      *  Method: POST<br><br>
      *  Parameters:<br>
@@ -35,7 +111,7 @@ public class Passport implements org.httpsrv.ResponseHandler {
      *      - password: Password<br>
      */
     @PostMapping(value = {"appLoginByPassword", "loginByPassword"})
-    public ResponseEntity<LinkedHashMap<String, Object>> sendAppLoginByPassword(@RequestBody LoginBody body, @RequestHeader(value = "x-rpc-device_id", required = false) String device_id, HttpServletRequest request) {
+    public ResponseEntity<LinkedHashMap<String, Object>> SendAppLoginByPassword(@RequestBody LoginBody body, @RequestHeader(value = "x-rpc-device_id", required = false) String device_id, HttpServletRequest request) {
         if(body == null || body.getAccount() == null || body.getPassword() == null) {
             return ResponseEntity.ok(this.makeResponse(Retcode.RET_MA_PASSPORT_INVALID_PARAMETER, "Parameter error", null));
         }
@@ -51,23 +127,31 @@ public class Passport implements org.httpsrv.ResponseHandler {
 
         Account acc = Database.findAccountByEmail(account);
         if(acc == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_INVALID_ACCOUNT, "System error", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_INVALID_ACCOUNT, "Account is not found.", null));
         }
 
         if(!acc.checkAuthorizationByPassword(password)) {
             return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_FAILED, "Account or password is mismatching.", null));
         }
 
+        if(!acc.getDeviceIds().contains(device_id)) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_ACCOUNT_NEW_DEVICE_DETECTED, "您正在新裝置上登入，為確保是您本人操作，請先驗證身分後再登入", null));
+        }
+
         String token = Random.generateStr(30);
         acc.setSessionKey(token);
         acc.setCurrentIP(request.getRemoteAddr());
-        acc.setDeviceId(device_id);
+        acc.setCurrentDeviceId(device_id);
         acc.save();
 
         LinkedHashMap<String, Object> data = new LinkedHashMap<>();
         data.put("login_ticket", "");
         data.put("need_realperson", false);
-        data.put("reactivation_info", new LinkedHashMap<String, Object>() {{
+        data.put("ext_user_info", new LinkedHashMap<String, Object>() {{
+            data.put("birth", 0);
+            data.put("guardian_email", "");
+        }});
+        data.put("reactivate_info", new LinkedHashMap<String, Object>() {{
             put("required", acc.getRequireActivation());
             put("ticket", acc.getRequireActivation() ? Database.findTicket(acc.getMobile().isEmpty() ? acc.getEmail() : acc.getMobile(), "Reactivation", !acc.getMobile().isEmpty()).getId() : "");
         }});
@@ -83,20 +167,21 @@ public class Passport implements org.httpsrv.ResponseHandler {
         data.put("user_info", new LinkedHashMap<String, Object>() {{
             put("account_name", acc.getName());
             put("aid", acc.getId());
-            put("area_code", acc.getMobileArea());
+            put("area_code", Utils.maskString(acc.getMobileArea()));
             put("country", GeoIP.getCountryCode(request.getRemoteAddr()));
-            put("email", acc.getEmail());
-            put("identity_code", acc.getIdentityCard());
+            put("email", Utils.maskString(acc.getEmail()));
+            put("identity_code", Utils.maskString(acc.getIdentityCard()));
             put("is_email_verify", acc.getIsEmailVerified() ? 1 : 0);
             put("links", new ArrayList<>());
-            put("mid", "");
-            put("mobile", acc.getMobile());
-            put("realname", acc.getRealname());
+            put("mid", "12ya9usebi_hy");
+            put("mobile", Utils.maskString(acc.getMobile()));
+            put("realname", Utils.maskString(acc.getRealname()));
             put("rebind_area_code", "");
             put("rebind_mobile", "");
-            put("rebind_mobile_time", "");
-            put("safe_area_code", acc.getSafeMobileArea());
-            put("safe_mobile", acc.getSafeMobile());
+            put("rebind_mobile_time", "0");
+            put("safe_area_code", Utils.maskString(acc.getSafeMobileArea()));
+            put("safe_mobile", Utils.maskString(acc.getSafeMobile()));
+            put("password_time", System.currentTimeMillis() / 1000);
         }});
 
         return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
@@ -114,7 +199,7 @@ public class Passport implements org.httpsrv.ResponseHandler {
         data.put("ip", new LinkedHashMap<String, Object>() {{
             put("country_code", GeoIP.getCountryCode(request.getRemoteAddr()));
             put("language", "en-us");
-            put("area_code", "1");
+            put("area_code", GeoIP.getCountryMobileCode(request.getRemoteAddr()));
         }});
         data.put("area_wl", new ArrayList<>());
         data.put("realname_wl", new ArrayList<>());
@@ -238,3 +323,5 @@ public class Passport implements org.httpsrv.ResponseHandler {
 /// TODO Implement: https://hk4e-sdk-os.hoyoverse.com/hk4e_global/account/ma-passport/api/appLoginByAuthTicket
 /// TODO Implement: https://hk4e-sdk-os.hoyoverse.com/hk4e_global/account/ma-passport/api/sendEmailNotificationByGameToken
 /// TODO Implement: https://hk4e-sdk-os.hoyoverse.com/hk4e_global/account/ma-passport/api/bindThirdPartyBySToken
+/// TODO Implement: https://sg-public-api.hoyoverse.com/account/ma-passport/api/getUserMarketingStatus
+/// TODO Implement: https://sg-public-api.hoyoverse.com/account/ma-passport/api/webLoginByPassword

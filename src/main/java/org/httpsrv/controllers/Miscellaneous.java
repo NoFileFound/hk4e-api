@@ -2,9 +2,12 @@ package org.httpsrv.controllers;
 
 import java.util.LinkedHashMap;
 import org.httpsrv.data.Retcode;
+import org.httpsrv.data.body.ExperimentListBody;
+import org.httpsrv.database.Database;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -55,13 +58,22 @@ public class Miscellaneous {
      *      - params: Parameters<br>
      */
     @PostMapping(value = "data_abtest_api/config/experiment/list")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendDataAbtestAPIConfig() {
+    public ResponseEntity<LinkedHashMap<String, Object>> SendDataAbtestAPIConfig(@RequestBody ExperimentListBody body) {
+        if(body == null || body.getScene_id() == null) {
+            LinkedHashMap<String, Object> arguments = new LinkedHashMap<>();
+            arguments.put("retcode", Retcode.RETCODE_FAIL);
+            arguments.put("success", false);
+            arguments.put("message", "参数错误");
+            return ResponseEntity.ok(arguments);
+        }
+
         LinkedHashMap<String, Object> arguments = new LinkedHashMap<>();
         arguments.put("retcode", Retcode.RETCODE_SUCC);
         arguments.put("success", true);
         arguments.put("message", "");
-        arguments.put("data", new LinkedHashMap<>());
-
+        arguments.put("data", Database.findAllExperiments(body.getScene_id()));
         return ResponseEntity.ok(arguments);
     }
 }
+
+/// TODO Implement: https://apm-api.hoyoverse.com/acc/apm/get

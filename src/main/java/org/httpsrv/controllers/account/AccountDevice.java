@@ -1,7 +1,7 @@
 package org.httpsrv.controllers.account;
 
-import java.util.LinkedHashMap;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.LinkedHashMap;
 import org.httpsrv.algorithms.Random;
 import org.httpsrv.conf.Config;
 import org.httpsrv.data.Retcode;
@@ -29,6 +29,27 @@ public class AccountDevice implements org.httpsrv.ResponseHandler {
     }
 
     /**
+     *  Source: <a href="https://api-account-os.hoyoverse.com/account/device/api/listNewerDevices">https://api-account-os.hoyoverse.com/account/device/api/listNewerDevices</a><br><br>
+     *  Method: POST<br><br>
+     */
+    @RequestMapping(value = "listNewerDevices")
+    public ResponseEntity<LinkedHashMap<String, Object>> SendListNewerDevices(@RequestHeader(value = "x-rpc-device_id", required = false) String device_id) {
+        if(device_id == null) {
+                return ResponseEntity.ok(this.makeResponse(Retcode.RET_WRONG_ACCOUNT, "账号错误", null));
+        }
+
+        Account account = Database.findAccountByDeviceId(device_id);
+        if(account == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_WRONG_ACCOUNT, "账号错误", null));
+        }
+
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>() {{
+            put("devices", account.getDeviceIds());
+            put("latest_id", account.getDeviceIds().getLast());
+        }}));
+    }
+
+    /**
      *  Source: <a href="https://api-account-os.hoyoverse.com/account/device/api/grant">https://api-account-os.hoyoverse.com/account/device/api/grant</a><br><br>
      *  Method: POST<br><br>
      *  Parameters:<br>
@@ -38,7 +59,7 @@ public class AccountDevice implements org.httpsrv.ResponseHandler {
     @RequestMapping(value = "grant")
     public ResponseEntity<LinkedHashMap<String, Object>> SendGrant(@RequestBody GrantBody body, @RequestHeader(value = "x-rpc-device_id", required = false) String device_id, HttpServletRequest request) {
         if(body == null || body.getCode() == null || body.getTicket() == null || device_id == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_APP_ID_ERROR, "请前往官网/商店下载最新版本", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "请前往官网/商店下载最新版本", null));
         }
 
         Ticket info = Database.findTicket(body.getTicket());
@@ -62,12 +83,14 @@ public class AccountDevice implements org.httpsrv.ResponseHandler {
         String newToken = Random.generateStr(15);
         account.setRequireDeviceGrant(false);
         account.setSessionKey(newToken);
-        account.setDeviceId(device_id);
+        account.setCurrentDeviceId(device_id);
         account.setCurrentIP(request.getRemoteAddr());
+        if(!account.getDeviceIds().contains(device_id)) {
+            account.getDeviceIds().add(device_id);
+        }
         account.save();
 
         Database.deleteTicketById(body.getTicket());
-
         LinkedHashMap<String, Object> data = new LinkedHashMap<>();
         data.put("login_ticket", "");
         data.put("game_token", newToken);
@@ -86,7 +109,7 @@ public class AccountDevice implements org.httpsrv.ResponseHandler {
     @RequestMapping(value = "preGrantByTicket")
     public ResponseEntity<LinkedHashMap<String, Object>> SendPreGrantByTicket(@RequestBody PreGrantByTicketBody body, @RequestHeader(value = "x-rpc-risky", required = false) String risky_type, @RequestHeader(value = "x-rpc-device_id", required = false) String device_id) {
         if(body == null || body.getAction_ticket() == null || body.getAction_ticket().isEmpty() || device_id == null || body.getWay() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_APP_ID_ERROR, "请前往官网/商店下载最新版本", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "请前往官网/商店下载最新版本", null));
         }
 
         try {
@@ -97,7 +120,7 @@ public class AccountDevice implements org.httpsrv.ResponseHandler {
                 }
 
                 if(!Random.compareRiskyId(device_id, risky_type)) {
-                    return ResponseEntity.ok(this.makeResponse(Retcode.RET_APP_ID_ERROR, "The current network environment is at risk.", null));
+                    return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "The current network environment is at risk.", null));
                 }
             }
         } catch(Exception ignore) {
@@ -124,7 +147,7 @@ public class AccountDevice implements org.httpsrv.ResponseHandler {
 
             return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
         }
-        else if(body.getWay().equals("Way_BindMobile")) {
+        else if(body.getWay().equals("Way_BindMobile") || body.getWay().equals("Way_SafeMobile")) {
             if(info.getMobile() == null) {
                 return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "Internal Server Error", null));
             }
@@ -145,6 +168,5 @@ public class AccountDevice implements org.httpsrv.ResponseHandler {
     }
 }
 
-/// TODO: Implement: https://api-account-os.hoyoverse.com/account/device/api/listNewerDevices
 /// TODO: Implement: https://api-account-os.hoyoverse.com/account/device/api/ackNewerDevices
 /// TODO: Implement: https://api-os-takumi.hoyoverse.com/account/device/api/preGrantByGame

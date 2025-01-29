@@ -2,6 +2,7 @@ package org.httpsrv.controllers.mdk;
 
 import java.util.LinkedHashMap;
 import jakarta.servlet.http.HttpServletRequest;
+import org.httpsrv.algorithms.HMAC;
 import org.httpsrv.algorithms.Random;
 import org.httpsrv.conf.Config;
 import org.httpsrv.data.Retcode;
@@ -9,6 +10,7 @@ import org.httpsrv.data.body.GuestDeleteBody;
 import org.httpsrv.data.body.GuestLoginBody;
 import org.httpsrv.database.Database;
 import org.httpsrv.database.entity.Account;
+import org.httpsrv.utils.Utils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -41,10 +43,13 @@ public class Guest implements org.httpsrv.ResponseHandler {
         }
 		
         if(body == null || body.getGuest_id() == null || body.getSign() == null || body.getDevice_id() == null || body.getGame_key() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter Error", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter error", null));
         }
 
         Account account = Database.findGuestAccount(body.getDevice_id());
+        if(account == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "System error", null));
+        }
         account.delete();
 
         return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>()));
@@ -76,7 +81,7 @@ public class Guest implements org.httpsrv.ResponseHandler {
             newly = true;
             account = new Account(true);
             account.setCurrentIP(request.getRemoteAddr());
-            account.setDeviceId(body.getDevice());
+            account.setCurrentDeviceId(body.getDevice());
             account.setSessionKey(Random.generateStr(30));
             account.save();
         }

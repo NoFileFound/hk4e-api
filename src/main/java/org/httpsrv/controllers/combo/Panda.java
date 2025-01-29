@@ -2,6 +2,7 @@ package org.httpsrv.controllers.combo;
 
 import java.util.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import jakarta.servlet.http.HttpServletRequest;
 import org.httpsrv.data.ApplicationId;
 import org.httpsrv.data.Retcode;
 import org.httpsrv.data.body.QrCodeConfirmBody;
@@ -10,7 +11,9 @@ import org.httpsrv.data.body.QrCodeQueryBody;
 import org.httpsrv.database.Database;
 import org.httpsrv.database.entity.Account;
 import org.httpsrv.database.entity.Ticket;
+import org.httpsrv.thirdparty.GeoIP;
 import org.httpsrv.utils.Jackson;
+import org.httpsrv.utils.Utils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -41,13 +44,13 @@ public class Panda implements org.httpsrv.ResponseHandler {
     @RequestMapping(value = "confirm")
     public ResponseEntity<LinkedHashMap<String, Object>> SendConfirmQRcode(@RequestBody QrCodeConfirmBody body) {
         if(body == null || body.getTicket() == null || body.getApp_id() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_APP_ID_ERROR, "System request failed, please return and try again", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "System request failed, please return and try again", null));
         }
 
         if(body.getApp_id() != ApplicationId.GENSHIN_RELEASE.getValue() &&
                 body.getApp_id() != ApplicationId.GENSHIN_SANDBOX_OVERSEAS.getValue() &&
                 body.getApp_id() != ApplicationId.GENSHIN_SANDBOX_CHINA.getValue()) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_APP_ID_ERROR, "System request failed, please return and try again", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "System request failed, please return and try again", null));
         }
 
         Ticket qrTicker = Database.findTicket(body.getTicket());
@@ -74,13 +77,13 @@ public class Panda implements org.httpsrv.ResponseHandler {
     @RequestMapping(value = "scan")
     public ResponseEntity<LinkedHashMap<String, Object>> SendScanQRCode(@RequestBody QrCodeQueryBody body) {
         if(body == null || body.getTicket() == null || body.getApp_id() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_APP_ID_ERROR, "System request failed, please return and try again", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "System request failed, please return and try again", null));
         }
 
         if(body.getApp_id() != ApplicationId.GENSHIN_RELEASE.getValue() &&
                 body.getApp_id() != ApplicationId.GENSHIN_SANDBOX_OVERSEAS.getValue() &&
                 body.getApp_id() != ApplicationId.GENSHIN_SANDBOX_CHINA.getValue()) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_APP_ID_ERROR, "System request failed, please return and try again", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "System request failed, please return and try again", null));
         }
 
         Ticket qrTicker = Database.findTicket(body.getTicket());
@@ -109,13 +112,13 @@ public class Panda implements org.httpsrv.ResponseHandler {
     @RequestMapping(value = "fetch")
     public ResponseEntity<LinkedHashMap<String, Object>> SendQRCodeFetch(@RequestBody QrCodeFetchBody body) {
         if(body == null || body.getApp_id() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_APP_ID_ERROR, "System request failed, please return and try again", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "System request failed, please return and try again", null));
         }
 
         if(body.getApp_id() != ApplicationId.GENSHIN_RELEASE.getValue() &&
                 body.getApp_id() != ApplicationId.GENSHIN_SANDBOX_OVERSEAS.getValue() &&
                 body.getApp_id() != ApplicationId.GENSHIN_SANDBOX_CHINA.getValue()) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_APP_ID_ERROR, "System request failed, please return and try again", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "System request failed, please return and try again", null));
         }
 
         Long time = (System.currentTimeMillis() + 60000) / 1000;
@@ -137,15 +140,15 @@ public class Panda implements org.httpsrv.ResponseHandler {
      *      - ticket: Ticket id<br>
      */
     @RequestMapping(value = "query")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendQueryQRCode(@RequestBody QrCodeQueryBody body) throws JsonProcessingException {
+    public ResponseEntity<LinkedHashMap<String, Object>> SendQueryQRCode(@RequestBody QrCodeQueryBody body, HttpServletRequest request) throws JsonProcessingException {
         if(body == null || body.getApp_id() == null || body.getTicket() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_APP_ID_ERROR, "System request failed, please return and try again", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "System request failed, please return and try again", null));
         }
 
         if(body.getApp_id() != ApplicationId.GENSHIN_RELEASE.getValue() &&
                 body.getApp_id() != ApplicationId.GENSHIN_SANDBOX_OVERSEAS.getValue() &&
                 body.getApp_id() != ApplicationId.GENSHIN_SANDBOX_CHINA.getValue()) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_APP_ID_ERROR, "System request failed, please return and try again", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "System request failed, please return and try again", null));
         }
 
         Long currentTime = System.currentTimeMillis() / 1000;
@@ -179,7 +182,7 @@ public class Panda implements org.httpsrv.ResponseHandler {
         else if(qrTicket.getState() == 2) {
             Account account = Database.findAccountByDeviceId(body.getDevice());
 			if(account == null) {
-				return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "The current network environment is at risk.", null));
+				return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "QR Code is not available now.", null));
 			}
 
             data.put("stat", "Confirmed");
@@ -187,7 +190,14 @@ public class Panda implements org.httpsrv.ResponseHandler {
                     "proto", "Account",
                     "raw", Jackson.toJsonString(new LinkedHashMap<>(Map.of(
                             "uid", account.getId(),
-                            "token", account.getSessionKey()
+                            "name", account.getName(),
+                            "email", account.getEmail(),
+                            "mobile", account.getMobile(),
+                            "is_email_verify", account.getIsEmailVerified(),
+                            "realname", Utils.maskString(account.getRealname()),
+                            "identity_card", Utils.maskString(account.getIdentityCard()),
+                            "token", account.getSessionKey(),
+                            "country", GeoIP.getCountryCode(request.getRemoteAddr())
                     ))),
                     "ext", ""
             )));

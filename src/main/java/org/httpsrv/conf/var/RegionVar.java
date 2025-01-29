@@ -26,7 +26,8 @@ public class RegionVar {
     public int downloadMode = 0;
     public String regionConfig = "pm|fk|add";
     public boolean showexception = true;
-    public int sdkenv = 8;
+    public int sdkenv = 1;
+    public String sdkenv_hmac_key = "71f35d945cf97f8f202cef35ae6aa7ed";
     public boolean loadPatch = true;
     public boolean checkdevice = false;
     public String devicelist = "";
@@ -41,6 +42,7 @@ public class RegionVar {
         public int Port;
         public Maintenance maintenance;
         public RegionOptions options = new RegionOptions();
+        public List<Map<String, Integer>> backupIPs = new ArrayList<>();
 
         public RegionClass() {};
 
@@ -104,7 +106,7 @@ public class RegionVar {
         public String account_bind_url = "";
         public String cdkey_url = "";
         public String privacy_policy_url = "";
-        public String game_biz = "";
+        public String game_biz = "hk4e_global";
         public String area_type = "";
         public Integer res_version_config_version = 0;
         public String res_version_config_md5 = "";

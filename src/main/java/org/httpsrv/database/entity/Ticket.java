@@ -21,6 +21,7 @@ public class Ticket {
     @Getter @Setter private String code;
     @Getter @Setter private Long time; // for qr
     @Getter @Setter private Integer state; // for qr
+    @Getter @Setter private boolean isVerified;
 
     /// bind, devide grant
     public Ticket(String email, String type, String author, String reason, boolean useMobile) {

@@ -19,13 +19,14 @@ public class Account {
     @Getter private String name;
     @Getter @Setter private String realname;
     @Getter private String password; /// sha256
-    @Getter private String email;
+    @Getter @Setter private String email;
     @Getter @Setter private String mobile;
     @Getter @Setter private String mobileArea;
     @Getter @Setter private String safeMobile;
     @Getter @Setter private String safeMobileArea;
     @Getter @Setter private String identityCard;
     @Getter @Setter private String currentIP;
+    @Getter @Setter private String currentDeviceId;
     @Getter private FatigueRemind fatigueRemind;
 
     // Third parties
@@ -48,7 +49,8 @@ public class Account {
 
     @Getter @Setter private String sessionKey;
     @Getter private String stokenKey;
-    @Getter @Setter private String deviceId;
+    @Getter private String ltokenKey;
+    @Getter private List<String> deviceIds;
 
     public Account() {
         this.id = String.valueOf(Database.getNextId("accounts"));

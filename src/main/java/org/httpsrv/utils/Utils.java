@@ -1,6 +1,9 @@
 package org.httpsrv.utils;
 
 import java.security.SecureRandom;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.springframework.core.io.ClassPathResource;
 
 public final class Utils {
@@ -16,7 +19,7 @@ public final class Utils {
     }
 
     public static boolean checkGameVersion(String version) {
-        return version.contains("OSRELWin") || version.contains("OSRELAndroid");
+        return version.contains("OSRELWin") || version.contains("OSRELAndroid") || version.contains("CNRELWin") || version.contains("CNRELAndroid");
     }
 
     public static int getConfigId(Integer platformId) {
@@ -51,11 +54,32 @@ public final class Utils {
         };
     }
 
+    public static String maskString(String text) {
+        if (text == null || text.isEmpty()) {
+            return null;
+        } else if (text.length() < 4) {
+            return "*".repeat(text.length()); // Mask the entire string if less than 4 characters
+        } else {
+            int start = text.length() >= 10 ? 2 : 1;
+            int end = text.length() > 5 ? 2 : 1;
+            String uncoveredStart = text.substring(0, start);
+            String uncoveredEnd = text.substring(text.length() - end);
+            String maskedMiddle = "*".repeat(text.length() - start - end);
+            return uncoveredStart + maskedMiddle + uncoveredEnd;
+        }
+    }
+
     public static byte[] readResourceFile(String fileName) {
         try {
             return new ClassPathResource(fileName).getInputStream().readAllBytes();
         }catch (Exception ex) {
             return null;
         }
+    }
+
+    public static String generateMessage(Map<String, Object> data) {
+        return data.entrySet().stream()
+                .map(entry -> entry.getKey() + "=" + (entry.getValue() == null ? "" : entry.getValue()))
+                .collect(Collectors.joining("&"));
     }
 }

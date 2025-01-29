@@ -7,6 +7,7 @@ import org.httpsrv.data.Retcode;
 import org.httpsrv.data.body.GetTokenByGameTokenBody;
 import org.httpsrv.database.Database;
 import org.httpsrv.database.entity.Account;
+import org.httpsrv.utils.Utils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -52,16 +53,16 @@ public class SessionCN implements org.httpsrv.ResponseHandler {
         }});
         data.put("user_info", new LinkedHashMap<String, Object>() {{
             put("aid", account.getId());
-            put("mid", ""); /// ?
+            put("mid", "");
             put("account_name", "");
-            put("email", account.getEmail());
+            put("email", Utils.maskString(account.getEmail()));
             put("is_email_verify", account.getIsEmailVerified());
-            put("area_code", "+86");
-            put("mobile", account.getMobile());
-            put("safe_area_code", "");
+            put("area_code", Utils.maskString(account.getMobileArea()));
+            put("mobile", Utils.maskString(account.getMobile()));
+            put("safe_area_code", Utils.maskString(account.getSafeMobileArea()));
             put("safe_area_name", "");
-            put("realname", account.getRealname());
-            put("identity_code", ""); /// ?
+            put("realname", Utils.maskString(account.getRealname()));
+            put("identity_code", Utils.maskString(account.getIdentityCard()));
             put("rebind_area_code", "");
             put("rebind_mobile", "");
             put("rebind_mobile_time", "0");

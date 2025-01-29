@@ -204,7 +204,7 @@ public class Granter implements org.httpsrv.ResponseHandler {
     @RequestMapping(value = "getFont", method = {RequestMethod.GET, RequestMethod.POST})
     public ResponseEntity<LinkedHashMap<String, Object>> SendFont(Integer app_id) {
         if(app_id == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_APP_ID_ERROR, "Invalid AppID", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "Invalid AppID", null));
         }
 
         var data = new LinkedHashMap<>();

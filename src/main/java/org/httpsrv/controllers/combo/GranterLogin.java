@@ -2,8 +2,9 @@ package org.httpsrv.controllers.combo;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.Getter;
 import java.util.LinkedHashMap;
+import lombok.Getter;
+import org.httpsrv.algorithms.HMAC;
 import org.httpsrv.conf.Config;
 import org.httpsrv.data.ApplicationId;
 import org.httpsrv.data.Retcode;
@@ -12,6 +13,7 @@ import org.httpsrv.database.Database;
 import org.httpsrv.database.entity.Account;
 import org.httpsrv.thirdparty.GeoIP;
 import org.httpsrv.utils.Jackson;
+import org.httpsrv.utils.Utils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -62,6 +64,23 @@ public class GranterLogin implements org.httpsrv.ResponseHandler {
         }
 
         LoginV2Data bodyData = Jackson.fromJsonString(body.getData(), LoginV2Data.class);
+
+        try {
+            String hmac = HMAC.createHMACHash(Utils.generateMessage(new LinkedHashMap<>() {{
+                put("app_id", body.getApp_id());
+                put("channel_id", body.getChannel_id());
+                put("data", body.getData());
+                put("device", body.getDevice());
+            }}), Config.getRegionVar().sdkenv_hmac_key).toLowerCase();
+
+            if(!body.getSign().equals(hmac)) {
+                return ResponseEntity.ok(this.makeResponse(Retcode.RET_MISSING_CONFIGURATION, "Signature error", null));
+            }
+
+        }catch (Exception ignored) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "HMAC error.", null));
+        }
+
         Account account = Database.findAccountByToken(bodyData.getToken());
         if(account == null) {
             account = Database.findAccountByDeviceId(body.getDevice());

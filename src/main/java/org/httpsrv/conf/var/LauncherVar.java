@@ -1,0 +1,56 @@
+package org.httpsrv.conf.var;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+
+public class LauncherVar {
+    public String game_name;
+    public String game_version = "5.3.0";
+    public String game_size = "125236130040";
+    public String game_md5 = "b53e050d303947a406bf117ba024f8af";
+    public String game_entry = "YuanShen.exe";
+    public String exe_file_name = "GenshinImpact.exe";
+    public String installation_dir = "Genshin Impact game";
+    public String audio_pkg_scan_dir = "GenshinImpact_Data/Persistent/audio_lang_14\"";
+    public String audio_pkg_res_dir = "GenshinImpact_Data/StreamingAssets/AudioAssets";
+    public String audio_pkg_cache_dir = "GenshinImpact_Data/Persistent/AudioAssets";
+    public String game_cached_res_dir = "GenshinImpact_Data/Persistent";
+    public String game_screenshot_dir = "ScreenShot";
+    public String game_log_gen_dir = "%userprofile%/AppData/LocalLow/miHoYo/Genshin Impact";
+    public String game_crash_file_gen_dir = "%userprofile%/AppData/Local/Temp";
+    public String default_download_mode = "DOWNLOAD_MODE_CHUNK";
+    public Boolean enable_customer_service = false;
+    public String game_package_password = "bDL4JUHL625x";
+    public String game_package_branch= "main";
+    public String game_package_id = "ScSYQBFhu9";
+    public String game_build_id = "I5l2OSxpfeZZ";
+    public String game_package_tag = "5.3.0";
+    public List<String> game_package_diff_tags = new ArrayList<>();
+    public String resource_list_url = "https://autopatchhk.yuanshen.com/client_app/download/pc_zip/20241219110745_1vT3FzXdDTDFZFrL/ScatteredFiles";
+    public List<LinkedHashMap<String, Object>> game_pkgs = new ArrayList<>();
+    public List<LinkedHashMap<String, Object>> game_patches = new ArrayList<>();
+    public List<LinkedHashMap<String, Object>> game_pre_download_patches = new ArrayList<>();
+    public List<LinkedHashMap<String, Object>> audio_pkgs = new ArrayList<>();
+    public List<LinkedHashMap<String, Object>> game_banners = new ArrayList<>();
+    public List<LinkedHashMap<String, Object>> game_posts = new ArrayList<>();
+    public List<LinkedHashMap<String, Object>> game_social_media_list = new ArrayList<>();
+    public List<LinkedHashMap<String, Object>> game_backgrounds = new ArrayList<>();
+    public List<LinkedHashMap<String, Object>> game_plugins = new ArrayList<>();
+    public List<LinkedHashMap<String, Object>> game_games = new ArrayList<>();
+    public List<LinkedHashMap<String, Object>> game_deprecatedFiles = new ArrayList<>();
+    public List<LinkedHashMap<String, Object>> game_deprecatedPackages = new ArrayList<>();
+    public LinkedHashMap<String, Object> game_channel_sdk = new LinkedHashMap<>();
+    public List<LinkedHashMap<String, Object>> game_manifests = new ArrayList<>();
+    public List<LinkedHashMap<String, Object>> game_manifests_patch = new ArrayList<>();
+    public List<LinkedHashMap<String, Object>> game_plugins_v2 = new ArrayList<>();
+    public List<LinkedHashMap<String, Object>> game_voice_packs = new ArrayList<>();
+    public List<LinkedHashMap<String, Object>> game_segments = new ArrayList<>();
+    public List<LinkedHashMap<String, Object>> game_diffs = new ArrayList<>();
+    public String game_decompressed_path = "";
+    public String game_package_size = "62612822140";
+    public List<Object> notifications = new ArrayList<>();
+    public LinkedHashMap<String, Object> game_sdk = new LinkedHashMap<>();
+    public LinkedHashMap<String, Object> game_force_update = new LinkedHashMap<>();
+    public LinkedHashMap<String, Object> game_predownload = new LinkedHashMap<>();
+}

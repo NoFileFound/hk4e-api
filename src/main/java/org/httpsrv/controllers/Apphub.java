@@ -49,5 +49,4 @@ public class Apphub implements org.httpsrv.ResponseHandler {
     }
 }
 
-/// TODO Implement: https://sdk-common-static.hoyoverse.com/sdk_global/apphub/upload/uploadAsa
 /// TODO Implement: https://sdk-common-static.hoyoverse.com/sdk_global/apphub/api/getCaid

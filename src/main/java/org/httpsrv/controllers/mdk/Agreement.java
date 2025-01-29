@@ -21,7 +21,12 @@ public class Agreement implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/agreement/api/getAgreementInfos">https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/agreement/api/getAgreementInfos</a><br><br>
-     *  Method: GET<br>
+     *  Method: GET<br><br>
+     *  Parameters: <br>
+     *  - biz_key - Genshin Impact release version type (hk4e_global/hk4e_cn)<br>
+     *  - country_code: Country code<br>
+     *  - token: session key<br>
+     *  - uid: Account id<br>
      */
     @GetMapping("getAgreementInfos")
     public ResponseEntity<LinkedHashMap<String, Object>> SendAgreementInfos() {

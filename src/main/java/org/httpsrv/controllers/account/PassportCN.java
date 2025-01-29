@@ -10,6 +10,7 @@ import org.httpsrv.data.body.MobileCaptchaBody;
 import org.httpsrv.database.Database;
 import org.httpsrv.database.entity.Account;
 import org.httpsrv.thirdparty.GeoIP;
+import org.httpsrv.utils.Utils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -55,7 +56,7 @@ public class PassportCN implements org.httpsrv.ResponseHandler {
         String token = Random.generateStr(30);
         acc.setSessionKey(token);
         acc.setCurrentIP(request.getRemoteAddr());
-        acc.setDeviceId(device_id);
+        acc.setCurrentDeviceId(device_id);
         acc.setMobileArea(area_code);
         acc.save();
 
@@ -78,20 +79,20 @@ public class PassportCN implements org.httpsrv.ResponseHandler {
         data.put("user_info", new LinkedHashMap<String, Object>() {{
             put("account_name", acc.getName());
             put("aid", acc.getId());
-            put("area_code", acc.getMobileArea());
+            put("area_code", Utils.maskString(acc.getMobileArea()));
             put("country", GeoIP.getCountryCode(request.getRemoteAddr()));
-            put("email", acc.getEmail());
-            put("identity_code", acc.getIdentityCard());
+            put("email", Utils.maskString(acc.getEmail()));
+            put("identity_code", Utils.maskString(acc.getIdentityCard()));
             put("is_email_verify", acc.getIsEmailVerified() ? 1 : 0);
             put("links", new ArrayList<>());
             put("mid", "");
-            put("mobile", acc.getMobile());
-            put("realname", acc.getRealname());
+            put("mobile", Utils.maskString(acc.getMobile()));
+            put("realname", Utils.maskString(acc.getRealname()));
             put("rebind_area_code", "");
             put("rebind_mobile", "");
-            put("rebind_mobile_time", "");
-            put("safe_area_code", acc.getSafeMobileArea());
-            put("safe_mobile", acc.getSafeMobile());
+            put("rebind_mobile_time", "0");
+            put("safe_area_code", Utils.maskString(acc.getSafeMobileArea()));
+            put("safe_mobile", Utils.maskString(acc.getSafeMobile()));
         }});
 
         return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));

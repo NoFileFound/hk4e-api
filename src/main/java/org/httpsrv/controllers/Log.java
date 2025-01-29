@@ -23,6 +23,45 @@ public class Log implements org.httpsrv.ResponseHandler {
     }
 
     /**
+     *  Source: <a href="https://log-upload-os.hoyoverse.com/log/sdk/upload">https://log-upload-os.hoyoverse.com/log/sdk/upload</a><br><br>
+     *  Method: POST<br>
+     * @deprecated since Closed beta II
+     */
+    @PostMapping("log/sdk/upload")
+    public ResponseEntity<LinkedHashMap<String, Object>> UploadOldSdkLog(Object x) {
+        if(!Database.logCollection("sdklogs", x)) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_FAIL, "Serialization error", null));
+        }
+
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", null));
+    }
+
+    /**
+     *  Source: <a href="https://sdk-common-static.hoyoverse.com/sdk_global/apphub/upload/uploadAsa">https://sdk-common-static.hoyoverse.com/sdk_global/apphub/upload/uploadAsa</a><br><br>
+     *  Method: POST<br>
+     */
+    @PostMapping(value = "sdk_global/apphub/upload/uploadAsa")
+    public ResponseEntity<LinkedHashMap<String, Object>> UploadAppHub(Object x) {
+        if(!Database.logCollection("apphublogs", x)) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_FAIL, "Serialization error", null));
+        }
+
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "success", null));
+    }
+
+    /**
+     *  Source: <a href="https://h5collector.mihoyo.com/h5/upload">https://h5collector.mihoyo.com/h5/upload</a><br><br>
+     *  Method: POST<br><br>
+     *  Parameters:<br>
+     *      - timestamp: Current time in unix<br>
+     *      - verification: Verification id<br>
+     */
+    @PostMapping(value = "h5/upload")
+    public ResponseEntity<LinkedHashMap<String, Object>> UploadH5() {
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", null));
+    }
+
+    /**
      *  Source: <a href="https://apm-log-upload-os.hoyoverse.com/apm/dataUpload">https://apm-log-upload-os.hoyoverse.com/apm/dataUpload</a><br><br>
      *  Method: POST<br>
      */

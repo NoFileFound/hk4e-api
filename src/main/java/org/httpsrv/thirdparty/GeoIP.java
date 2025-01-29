@@ -17,7 +17,16 @@ public final class GeoIP {
             InetAddress ipAddress = InetAddress.getByName(ip);
             return client.city(ipAddress).getCountry().getIsoCode();
         }catch (Exception ignored) {
-            return "";
+            return "JP";
+        }
+    }
+
+    public static String getCountryMobileCode(String ip) {
+        try {
+            InetAddress ipAddress = InetAddress.getByName(ip);
+            return client.city(ipAddress).getTraits().getMobileCountryCode();
+        }catch (Exception ignored) {
+            return "81";
         }
     }
 }

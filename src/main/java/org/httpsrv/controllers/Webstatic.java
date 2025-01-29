@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class Webstatic {
-    @GetMapping(value = {"webstatic/**", "sdk-public/**"})
+    @GetMapping(value = {"webstatic/**", "sdk-public/**", "launcher-public/**"})
     public ResponseEntity<?> SendResourceFiles(jakarta.servlet.http.HttpServletRequest request) {
         try {
             Resource resource = new ClassPathResource(request.getRequestURI());

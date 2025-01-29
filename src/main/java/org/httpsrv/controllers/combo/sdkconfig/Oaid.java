@@ -25,6 +25,7 @@ public class Oaid implements org.httpsrv.ResponseHandler {
      *      - package_name: Package<br>
      */
     @GetMapping("getConfig")
+    @SuppressWarnings("unused")
     public ResponseEntity<LinkedHashMap<String, Object>> SendConfig(String package_name) {
         return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_FAIL, "not found the record by param", null));
     }

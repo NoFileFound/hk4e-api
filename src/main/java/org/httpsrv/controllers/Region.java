@@ -231,12 +231,7 @@ public class Region {
         data.put("message", "OK");
         data.put("retcode", Retcode.RETCODE_FAIL);
         data.put("data", new LinkedHashMap<>() {{
-            put("address_list", new ArrayList<>(List.of(
-                    new LinkedHashMap<>() {{
-                        put("ip", reg.regionClass.Ip);
-                        put("port", reg.regionClass.Port);
-                    }}
-            )));
+            put("address_list", reg.regionClass.backupIPs);
         }});
         return ResponseEntity.ok(data);
     }
