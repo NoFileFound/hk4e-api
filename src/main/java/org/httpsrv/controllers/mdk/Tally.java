@@ -2,6 +2,7 @@ package org.httpsrv.controllers.mdk;
 
 import java.util.*;
 import org.httpsrv.data.Retcode;
+import org.httpsrv.database.Database;
 import org.httpsrv.utils.Utils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +22,8 @@ public class Tally implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/mdk/tally/tally/getPageProfile">https://hk4e-sdk-os.hoyoverse.com/mdk/tally/tally/getPageProfile</a><br><br>
-     *  Methods: GET, POST<br><br>
+     *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - game: Genshin Impact release version type (hk4e_global/hk4e_cn)<br>
      *      - released_flag: Is the build final release?<br>
@@ -58,7 +60,8 @@ public class Tally implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/mdk/tally/tally/listPayPlat">https://hk4e-sdk-os.hoyoverse.com/mdk/tally/tally/listPayPlat</a><br><br>
-     *  Methods: GET, POST<br><br>
+     *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - currency: Currency<br>
      */
@@ -69,7 +72,7 @@ public class Tally implements org.httpsrv.ResponseHandler {
         }
 
         return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<String, Object>() {{
-            put("pay_types", new ArrayList<>());
+            put("pay_types", Database.findAllPayTypes());
         }}));
     }
 }

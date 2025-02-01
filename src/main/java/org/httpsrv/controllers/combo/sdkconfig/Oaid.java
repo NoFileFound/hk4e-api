@@ -20,8 +20,9 @@ public class Oaid implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sdk-static.mihoyo.com/hk4e_cn/combo/sdkconfig/oaid/api/getConfig">https://sdk-static.mihoyo.com/hk4e_cn/combo/sdkconfig/oaid/api/getConfig</a><br><br>
-     *  Method: GET<br><br>
-     *  Parameters:<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
      *      - package_name: Package<br>
      */
     @GetMapping("getConfig")

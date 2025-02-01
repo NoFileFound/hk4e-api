@@ -180,49 +180,4 @@ public class ConfigVar {
             "info_get_cps",
             "info_get_uapc"
     ));
-
-    public List<String> mobilePackages = new ArrayList<>(List.of(
-            "com.miHoYo.GenshinImpact",
-            "com.miHoYo.Yuanshen",
-            "com.miHoYo.enterprise.HK4E",
-            "com.miHoYo.enterprise.HK4E2",
-            "com.miHoYo.genshinimpactcb",
-            "com.miHoYo.yuanshencb",
-            "com.miHoYo.bh3global",
-            "com.miHoYo.bh3globalBeta",
-            "com.miHoYo.bh3korea",
-            "com.miHoYo.bh3korea.samsung",
-            "com.miHoYo.bh3korea_beta",
-            "com.miHoYo.bh3oversea",
-            "com.miHoYo.bh3oversea.huawei",
-            "com.miHoYo.bh3overseaBeta",
-            "com.miHoYo.bh3rdJP",
-            "com.miHoYo.bh3tw",
-            "com.miHoYo.bh3twbeta",
-            "com.miHoYo.bh3twmycard",
-            "com.miHoYo.enterprise.NGHSoD",
-            "com.miHoYo.enterprise.NGHSoDBak",
-            "com.miHoYo.enterprise.NGHSoDBeta",
-            "com.miHoYo.enterprise.NGHSoDQD",
-            "com.miHoYo.HSoDv2.mix",
-            "com.miHoYo.HSoDv2Beta",
-            "com.miHoYo.HSoDv2Original",
-            "com.miHoYo.HSoDv2OriginalENT",
-            "com.miHoYo.tot.cht",
-            "com.miHoYo.tot.glb",
-            "com.miHoYo.wd",
-            "com.miHoYo.cloudgames.ys",
-            "com.miHoYo.cloudgames.ys.dev",
-            "com.mihoyo.cloudgame",
-            "com.mihoyo.cloudgamedev",
-            "com.HoYoverse.enterprise.hkrpgoversea",
-            "com.HoYoverse.hkrpgoversea",
-            "com.HoYoverse.hkrpgoverseacbtest",
-            "com.miHoYo.enterprise.hkrpg",
-            "com.miHoYo.hkrpg",
-            "com.miHoYo.hkrpgcb",
-            "com.miHoYo.hkrpgoverseacb"
-    ));
-
-    public List<String> extensionList = new ArrayList<>();
 }

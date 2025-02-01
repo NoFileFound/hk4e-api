@@ -1,8 +1,8 @@
 package org.httpsrv.controllers.mdk;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import org.httpsrv.data.Retcode;
+import org.httpsrv.database.Database;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,11 +22,12 @@ public class LuckyCat implements org.httpsrv.ResponseHandler {
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/mdk/luckycat/luckycat/listPayPlat">https://hk4e-sdk-os.hoyoverse.com/mdk/luckycat/luckycat/listPayPlat</a><br><br>
      *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br>
      */
     @RequestMapping(value = "listPayPlat", method = {RequestMethod.GET, RequestMethod.POST})
     public ResponseEntity<LinkedHashMap<String, Object>> SendListPayPlatforms() {
         return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<String, Object>() {{
-            put("pay_plats", new ArrayList<>());
+            put("pay_plats", Database.findAllPaymentPlatforms());
         }}));
     }
 }

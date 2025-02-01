@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.client.*;
 import dev.morphia.*;
 import dev.morphia.mapping.MapperOptions;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -112,7 +111,7 @@ public class Database {
 
     /**
      * Searches for launcher experiments by given ids.
-     * @param scene_id The given id.
+     * @param id The given id.
      * @return The list of experiments.
      */
     public static List<LauncherExperiment> findAllLauncherExperiments(String id) {
@@ -125,6 +124,14 @@ public class Database {
         }
 
         return experimentsList;
+    }
+
+    /**
+     * Searches for all blacklisted devices.
+     * @return The list of all blacklisted devices.
+     */
+    public static List<FirebaseBL> findAllBlacklistedDevices() {
+        return getDataStore().find(FirebaseBL.class).stream().toList();
     }
 
     /**
@@ -145,12 +152,65 @@ public class Database {
     }
 
     /**
+     * Searches for all payment platforms.
+     * @return The given payment platforms.
+     */
+    public static List<PayPlatform> findAllPaymentPlatforms() {
+        return getDataStore().find(PayPlatform.class).stream().toList();
+    }
+
+    /**
+     * Searches for all payment tiers.
+     * @return The list of all payment  tiers.
+     */
+    public static List<PayTier> findAllPaymentTiers() {
+        return getDataStore().find(PayTier.class).stream().toList();
+    }
+
+    /**
+     * Searches for all payment options.
+     * @return The given payment options.
+     */
+    public static List<PayType> findAllPayTypes() {
+        return getDataStore().find(PayType.class).stream().toList();
+    }
+
+    /**
+     * Searches for all device extensions by given platform id.
+     * @param platform The given platform id.
+     * @return The DeviceExt object.
+     */
+    public static DeviceExt findDeviceExtensions(int platform) {
+        return getDataStore().find(DeviceExt.class).filter(eq("platform", platform)).first();
+    }
+
+    /**
      * Searches for guest account instance by id.
      * @param device The given device identifier.
      * @return The account instance if exist or else null.
      */
     public static Account findGuestAccount(String device) {
         return getDataStore().find(Account.class).filter(eq("currentDeviceId", device), eq("accountType", 0)).first();
+    }
+
+    /**
+     * Searches for ticket by id.
+     * @param id The given id.
+     * @param action_type The given action type.
+     * @return The ticket instance if exist or else null.
+     */
+    public static Ticket findTicket(String id, String action_type) {
+        return getDataStore().find(Ticket.class).filter(eq("_id", id), eq("type", action_type)).first();
+    }
+
+    /**
+     * Searches for ticket by account id.
+     * @param accountId The given account id.
+     * @param action_type The given action type.
+     * @return The ticket instance if exist or else null.
+     */
+    public static Ticket findTicketByAccountId(String accountId, String action_type) {
+        return getDataStore().find(Ticket.class).filter(eq("type", action_type), eq("accountId", accountId)).first();
     }
 
     /**
@@ -164,45 +224,29 @@ public class Database {
     }
 
     /**
-     * Searches for ticket by given email/mobile and type.
-     * @param email The given email address. if @param useMobile is false, else the given mobile number.
-     * @param type The ticket type.
-     * @return The ticket instance if exist else null.
+     * Searches for webapi profile by given account id.
+     * @param id The given account id.
+     * @return The WebProfile instance if exist or else null.
      */
-    public static Ticket findTicket(String email, String type, boolean useMobile) {
-        if(useMobile) {
-            return getDataStore().find(Ticket.class).filter(eq("mobile", email), eq("type", type)).first();
-        }
-
-        return getDataStore().find(Ticket.class).filter(eq("email", email), eq("type", type)).first();
+    public static WebProfile findWebProfile(String id) {
+        return getDataStore().find(WebProfile.class).filter(eq("_id", id)).first();
     }
 
     /**
-     * Searches for ticket by id.
-     * @param id The given id.
-     * @return The ticket instance if exist or else null.
+     * Searches for webapi profile by given cookie token.
+     * @param cookieToken The given cookie token.
+     * @return The WebProfile instance if exist or else null.
      */
-    public static Ticket findTicket(String id) {
-        return getDataStore().find(Ticket.class).filter(eq("_id", id)).first();
+    public static WebProfile findWebProfileByCookie(String cookieToken) {
+        return getDataStore().find(WebProfile.class).filter(eq("cookieKey", cookieToken)).first();
     }
 
-    public static Player findPlayerByAccountId(String id) {
-        return getDataStore().find(Player.class).filter(eq("account_id", id)).first();
-    }
 
-    public static void saveAccountAsync(Object object) {
+    public static void saveObjectAsync(Object object) {
         eventExecutor.submit(() -> getDataStore().save(object));
     }
 
-    public static void deleteAccountAsync(Object object) {eventExecutor.submit(() -> getDataStore().delete(object));}
-
-    public static void deleteTicketById(String id) {
-        getDataStore().find(Ticket.class).filter(eq("_id", id)).delete();
-    }
-
-    public static List<Goods> findAllGoods(String id) {
-        return getDataStore().find(Goods.class).filter(eq("goods_owner", id)).stream().toList();
-    }
+    public static void deleteObjectAsync(Object object) {eventExecutor.submit(() -> getDataStore().delete(object));}
 
     public static Integer getNextId(String collectionName) {
         MongoCollection<Document> collection = getDataStore().getDatabase().getCollection(collectionName);

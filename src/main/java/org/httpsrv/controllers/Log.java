@@ -25,6 +25,7 @@ public class Log implements org.httpsrv.ResponseHandler {
     /**
      *  Source: <a href="https://log-upload-os.hoyoverse.com/log/sdk/upload">https://log-upload-os.hoyoverse.com/log/sdk/upload</a><br><br>
      *  Method: POST<br>
+     *  Content-Type: application/json<br>
      * @deprecated since Closed beta II
      */
     @PostMapping("log/sdk/upload")
@@ -39,6 +40,7 @@ public class Log implements org.httpsrv.ResponseHandler {
     /**
      *  Source: <a href="https://sdk-common-static.hoyoverse.com/sdk_global/apphub/upload/uploadAsa">https://sdk-common-static.hoyoverse.com/sdk_global/apphub/upload/uploadAsa</a><br><br>
      *  Method: POST<br>
+     *  Content-Type: application/json<br>
      */
     @PostMapping(value = "sdk_global/apphub/upload/uploadAsa")
     public ResponseEntity<LinkedHashMap<String, Object>> UploadAppHub(Object x) {
@@ -51,7 +53,8 @@ public class Log implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://h5collector.mihoyo.com/h5/upload">https://h5collector.mihoyo.com/h5/upload</a><br><br>
-     *  Method: POST<br><br>
+     *  Method: POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - timestamp: Current time in unix<br>
      *      - verification: Verification id<br>
@@ -64,6 +67,7 @@ public class Log implements org.httpsrv.ResponseHandler {
     /**
      *  Source: <a href="https://apm-log-upload-os.hoyoverse.com/apm/dataUpload">https://apm-log-upload-os.hoyoverse.com/apm/dataUpload</a><br><br>
      *  Method: POST<br>
+     *  Content-Type: application/json<br>
      */
     @PostMapping(value = {"apm/dataUpload", "sdk/dataUpload", "crash/dataUpload", "sophon/dataUpload", "perf/dataUpload", "ys_custom/dataUpload", "event/dataUpload", "adsdk/dataUpload", "crashdump/dataUpload", "loginsdk/dataUpload", "client/event/dataUpload", "asm/dataUpload", "2g/dataUpload"})
     public ResponseEntity<LinkedHashMap<String, Object>> UploadAGameLogsData(@RequestBody List<Object> log, HttpServletRequest request) {
@@ -81,7 +85,8 @@ public class Log implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://minor-api-os.hoyoverse.com/common/h5log/log/batch">https://minor-api-os.hoyoverse.com/common/h5log/log/batch</a><br><br>
-     *  Method: POST<br><br>
+     *  Method: POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - topic: Topic id<br>
      */

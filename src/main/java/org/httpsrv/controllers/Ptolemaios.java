@@ -23,7 +23,8 @@ public class Ptolemaios implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sg-public-api.hoyoverse.com/ptolemaios_api/api/reportStrategyData">https://sg-public-api.hoyoverse.com/ptolemaios_api/api/reportStrategyData</a><br><br>
-     *  Method: POST<br><br>
+     *  Method: POST<br>
+     *  Content-Type: application/json<br>
      */
     @GetMapping("reportStrategyData")
     public ResponseEntity<LinkedHashMap<String, Object>> SendReportStrategyData() {
@@ -32,7 +33,8 @@ public class Ptolemaios implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sg-public-api.hoyoverse.com/ptolemaios_api/api/getLatestRelease">https://sg-public-api.hoyoverse.com/ptolemaios_api/api/getLatestRelease</a><br><br>
-     *  Method: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - app_id: Application id<br>
      *      - channel: Channel name<br>

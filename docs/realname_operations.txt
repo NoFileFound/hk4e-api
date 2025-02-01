@@ -1,3 +1,5 @@
 None
 BindRealname
 ModifyRealname
+BindRealperson
+VerifyRealperson

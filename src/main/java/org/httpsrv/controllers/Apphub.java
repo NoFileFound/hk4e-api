@@ -23,7 +23,8 @@ public class Apphub implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sdk-common-static.hoyoverse.com/sdk_global/apphub/api/getAttributionReportConfig">https://sdk-common-static.hoyoverse.com/sdk_global/apphub/api/getAttributionReportConfig</a><br><br>
-     *  Method: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - app_id: Application id<br>
      *      - client_type: Platform<br>

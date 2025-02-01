@@ -21,8 +21,9 @@ public class Agreement implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/agreement/api/getAgreementInfos">https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/agreement/api/getAgreementInfos</a><br><br>
-     *  Method: GET<br><br>
-     *  Parameters: <br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
      *  - biz_key - Genshin Impact release version type (hk4e_global/hk4e_cn)<br>
      *  - country_code: Country code<br>
      *  - token: session key<br>
@@ -38,6 +39,13 @@ public class Agreement implements org.httpsrv.ResponseHandler {
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/agreement/api/operateAgreement">https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/agreement/api/operateAgreement</a><br><br>
      *  Method: POST<br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
+     *  - agreement_id - Agreement id<br>
+     *  - version: Version<br>
+     *  - operation: Operation<br>
+     *  - uid: Account id<br>
+     *  - token: Account session token<br>
      */
     @PostMapping("operateAgreement")
     public ResponseEntity<LinkedHashMap<String, Object>> SendOperateAgreement() {

@@ -3,16 +3,17 @@ package org.httpsrv.controllers.account;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import org.httpsrv.algorithms.BASE64;
+import java.util.List;
 import org.httpsrv.algorithms.RSA;
 import org.httpsrv.conf.Config;
 import org.httpsrv.data.Retcode;
-import org.httpsrv.data.body.BindMobileBody;
-import org.httpsrv.data.body.BindRealnameBody;
-import org.httpsrv.data.body.ModifyRealnameBody;
+import org.httpsrv.data.body.account.AthBindMobileBody;
+import org.httpsrv.data.body.account.AthBindRealnameBody;
+import org.httpsrv.data.body.account.AthModifyRealnameBody;
 import org.httpsrv.database.Database;
 import org.httpsrv.database.entity.Account;
 import org.httpsrv.database.entity.Ticket;
+import org.httpsrv.database.entity.WebProfile;
 import org.httpsrv.thirdparty.GeoIP;
 import org.httpsrv.utils.Utils;
 import org.springframework.http.ResponseEntity;
@@ -32,11 +33,21 @@ public class Auth implements org.httpsrv.ResponseHandler {
     }
 
     /**
+     *  Source: <a href="https://gameapi-account.mihoyo.com/account/auth/api/cookieLogout">https://gameapi-account.mihoyo.com/account/auth/api/cookieLogout</a><br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br>
+     */
+    @PostMapping(value = "cookieLogout")
+    public ResponseEntity<LinkedHashMap<String, Object>> SendCookieLogout() {
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>()));
+    }
+
+    /**
      *  Source: <a href="https://gameapi-account.mihoyo.com/account/auth/api/genAuthKey">https://gameapi-account.mihoyo.com/account/auth/api/genAuthKey</a><br><br>
-     *  Method: POST<br><br>
+     *  Method: POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
-     *      - game_biz: Genshin Impact release version type (hk4e_global/hk4e_cn)<br>
-     *      - stoken (cookies): Stoken<br>
+     *      - game_biz: Game region id.<br>
      */
     @PostMapping(value = "genAuthKey")
     public ResponseEntity<LinkedHashMap<String, Object>> SendAuthKey(@RequestBody String game_biz, @CookieValue(value = "stoken") String stoken) {
@@ -45,18 +56,17 @@ public class Auth implements org.httpsrv.ResponseHandler {
             return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_FAILED, "登录失效，请重新登录", null));
         }
 
-        LinkedHashMap<String, Object> data = new LinkedHashMap<>();
-        data.put("sign_type", 2);
-        data.put("authkey_ver", 1);
-        data.put("auth_key", BASE64.encode(account.getSessionKey().getBytes()));
-        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>() {{
+            put("auth_key", account.getSessionKey().getBytes());
+            put("sign_type", 2);
+            put("auth_key_ver", 1);
+        }}));
     }
 
     /**
      *  Source: <a href="https://gameapi-account.mihoyo.com/account/auth/api/getLTokenBySToken">https://gameapi-account.mihoyo.com/account/auth/api/getLTokenBySToken</a><br><br>
-     *  Method: GET<br><br>
-     *  Parameters:<br>
-     *      - stoken (cookies): Stoken<br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br>
      */
     @GetMapping(value = "getLTokenBySToken")
     public ResponseEntity<LinkedHashMap<String, Object>> SendLTokenBySToken(@CookieValue(value = "stoken") String stoken) {
@@ -65,44 +75,44 @@ public class Auth implements org.httpsrv.ResponseHandler {
             return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_FAILED, "登录失效，请重新登录", null));
         }
 
-        LinkedHashMap<String, Object> data = new LinkedHashMap<>();
-        data.put("ltoken", account.getLtokenKey());
-        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
+        WebProfile profile = Database.findWebProfile(account.getId());
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>() {{
+            put("ltoken", profile.getLtoken());
+        }}));
     }
 
     /**
      *  Source: <a href="https://api-account-os.hoyoverse.com/account/auth/api/getConfig">https://api-account-os.hoyoverse.com/account/auth/api/getConfig</a><br><br>
      *  Method: POST<br>
+     *  Content-Type: application/json<br>
      */
     @GetMapping(value = "getConfig")
     public ResponseEntity<LinkedHashMap<String, Object>> SendConfig(HttpServletRequest request) {
-        LinkedHashMap<String, Object> data = new LinkedHashMap<>();
-
-        data.put("ip", new LinkedHashMap<String, Object>() {{
-            put("country_code", GeoIP.getCountryCode(request.getRemoteAddr()));
-            put("language", "en-us");
-            put("area_code", GeoIP.getCountryMobileCode(request.getRemoteAddr()));
-        }});
-        data.put("area_wl", new ArrayList<>());
-        data.put("realname_wl", new ArrayList<>());
-        data.put("guardian_age_limit", "14");
-        data.put("disable_mmt", Config.getHttpConfig().disableMMT);
-        data.put("show_birthday", "true");
-
-        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>() {{
+            put("ip", new LinkedHashMap<String, Object>() {{
+                put("country_code", GeoIP.getCountryCode(request.getRemoteAddr()));
+                put("language", "en-us");
+                put("area_code", GeoIP.getCountryMobileCode(request.getRemoteAddr()));
+            }});
+            put("area_wl", new ArrayList<>(List.of("KR")));
+            put("realname_wl", new ArrayList<>());
+            put("guardian_age_limit", "14");
+            put("disable_mmt", Config.getHttpConfig().disableMMT);
+            put("show_birthday", "false");
+        }}));
     }
 
     /**
      *  Source: <a href="https://gameapi-account.mihoyo.com/account/auth/api/getCookieAccountInfoBySToken">https://gameapi-account.mihoyo.com/account/auth/api/getCookieAccountInfoBySToken</a><br><br>
-     *  Method: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
-     *      - game_biz: Genshin Impact release version type (hk4e_global/hk4e_cn)<br>
-     *      - stoken (cookies): Stoken<br>
+     *      - game_biz: Game region id.<br>
      */
     @GetMapping(value = "getCookieAccountInfoBySToken")
     public ResponseEntity<LinkedHashMap<String, Object>> SendCookieAccountInfoBySToken(String game_biz, @CookieValue(value = "stoken") String stoken) {
         if(game_biz == null || !Utils.checkBizName(game_biz) || stoken == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter error", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
         }
 
         Account account = Database.findAccountByStoken(stoken);
@@ -110,28 +120,29 @@ public class Auth implements org.httpsrv.ResponseHandler {
             return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_FAILED, "登录失效，请重新登录", null));
         }
 
-        LinkedHashMap<String, Object> data = new LinkedHashMap<>();
-        data.put("uid", account.getId());
-        data.put("cookie_token", BASE64.encode(account.getSessionKey().getBytes()));
-
-        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
+        WebProfile profile = Database.findWebProfile(account.getId());
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>() {{
+            put("uid", account.getId());
+            put("cookie_token", profile.getCookieToken().getBytes());
+        }}));
     }
 
     /**
      *  Source: <a href="https://gameapi-account.mihoyo.com/account/auth/api/getMultiTokenByLoginTicket">https://gameapi-account.mihoyo.com/account/auth/api/getMultiTokenByLoginTicket</a><br><br>
-     *  Method: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
-     *      - login_ticket: login ticket<br>
-     *      - token_types: token type<br>
-     *      - uid: account id<br>
+     *      - login_ticket: Ticket to log in.<br>
+     *      - token_types: Token type.<br>
+     *      - uid: Account id.<br>
      */
     @GetMapping(value = "getMultiTokenByLoginTicket")
     public ResponseEntity<LinkedHashMap<String, Object>> SendMultiTokenByLoginTicket(String login_ticket, Integer token_types, String uid) {
         if(login_ticket == null || token_types == null || uid == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter error", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
         }
 
-        Ticket info = Database.findTicket(login_ticket);
+        Ticket info = Database.findTicket(login_ticket, "getMultiToken");
         if(info == null) {
             return ResponseEntity.ok(this.makeResponse(Retcode.RET_BBS_NOT_LOGIN, "登录状态失效，请重新登录", null));
         }
@@ -143,15 +154,16 @@ public class Auth implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://gameapi-account.mihoyo.com/account/auth/api/getCookieAccountInfoByGameToken">https://gameapi-account.mihoyo.com/account/auth/api/getCookieAccountInfoByGameToken</a><br><br>
-     *  Method: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
-     *      - account_id: account id<br>
-     *      - game_token: account session key<br>
+     *      - account_id: Account id.<br>
+     *      - game_token: Account session key.<br>
      */
     @GetMapping(value = "getCookieAccountInfoByGameToken")
     public ResponseEntity<LinkedHashMap<String, Object>> SendCookieAccountInfoByGameToken(String account_id, String game_token) {
         if(account_id == null || game_token == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter error", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
         }
 
         Account account = Database.findAccountByToken(game_token);
@@ -159,191 +171,219 @@ public class Auth implements org.httpsrv.ResponseHandler {
             return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_FAILED, "登录失效，请重新登录", null));
         }
 
-        LinkedHashMap<String, Object> data = new LinkedHashMap<>();
-        data.put("uid", account.getId());
-        data.put("cookie_token", BASE64.encode(account.getSessionKey().getBytes()));
-
-        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
+        WebProfile profile = Database.findWebProfile(account.getId());
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>() {{
+            put("uid", account.getId());
+            put("cookie_token", profile.getCookieToken().getBytes());
+        }}));
     }
 
     /**
      *  Source: <a href="https://gameapi-account.mihoyo.com/account/auth/api/modifyRealname">https://gameapi-account.mihoyo.com/account/auth/api/modifyRealname</a><br><br>
-     *  Method: POST<br><br>
+     *  Method: POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
-     *      - action_ticket: Ticket id<br>
-     *      - realname: Real name<br>
-     *      - identity_card: Identity card<br>
+     *      - action_ticket: Ticket id.<br>
+     *      - realname: Real name.<br>
+     *      - identity_card: Identity card.<br>
+     *      - is_crypto: Is encrypted with RSA.<br>
      */
     @PostMapping(value = "modifyRealname")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendModifyRealname(@RequestBody ModifyRealnameBody body) {
-        if(body == null || body.getAction_ticket() == null || body.getRealname() == null || body.getIdentity_card() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter error", null));
+    public ResponseEntity<LinkedHashMap<String, Object>> SendModifyRealname(@RequestBody AthModifyRealnameBody body) {
+        String actionTicket = body.getAction_ticket();
+        String realName = body.getRealname();
+        String identityCard = body.getIdentity_card();
+        Boolean isEncrypted = body.getIs_crypto();
+
+        if(actionTicket == null || realName == null || identityCard == null || isEncrypted == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
         }
 
-        Ticket info = Database.findTicket(body.getAction_ticket());
-        if(info == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_EXPIRED_CAPTCHA_VERIFICATION, "The authentication information has expired.", null));
+        Ticket myTicket = Database.findTicket(actionTicket, "modify_realname");
+        if(myTicket == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
         }
 
-        Account account = Database.findAccountByMobile(info.getMobile());
-        if(account == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "System error.", null));
+        String encIdentityCard = identityCard;
+        String encRealName = realName;
+        if(isEncrypted) {
+            try {
+                realName = RSA.DecryptPassword(realName);
+                identityCard = RSA.DecryptPassword(identityCard);
+            }catch(Exception ignored) {
+                return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "系统错误", null));
+            }
         }
 
-        account.setRealname(body.getRealname());
-        account.setIdentityCard(body.getIdentity_card());
+        Account account = Database.findAccountById(myTicket.getAccountId());
+        account.setRealname(realName);
+        account.setIdentityCard(identityCard);
+        account.setRealPersonOperationName("None");
+        account.setRequireRealPerson(false);
         account.save();
-		info.delete();
 
-        LinkedHashMap<String, Object> data = new LinkedHashMap<>();
-        data.put("realname_operation", "updated");
-        data.put("identity_card", body.getIdentity_card());
-        data.put("realname", body.getRealname());
+        myTicket.delete();
 
-        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
-    }
-
-    /**
-     *  Source: <a href="https://gameapi-account.mihoyo.com/account/auth/api/bindMobile">https://gameapi-account.mihoyo.com/account/auth/api/bindMobile</a><br><br>
-     *  Method: POST<br><br>
-     *  Parameters:<br>
-     *      - area_code: mobile country code<br>
-     *      - ticket: Ticket id<br>
-     *      - mobile: mobile number<br>
-     *      - captcha: verification code<br>
-     *      - uid: account id<br>
-     */
-    @PostMapping(value = "bindSafeMobile")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendBindSafeMobile(@RequestBody BindMobileBody body) {
-        if(body == null || body.getCaptcha() == null || body.getTicket() == null || body.getUid() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter error", null));
-        }
-
-        Ticket info = Database.findTicket(body.getTicket());
-        if(info == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_EXPIRED_CAPTCHA_VERIFICATION, "The authentication information has expired.", null));
-        }
-
-        if(!info.getCode().equals(body.getCaptcha())) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_GRANT_INVALID_CODE, "The code you provided is invalid.", null));
-        }
-
-        Account account = Database.findAccountById(body.getUid());
-        if(account == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "System error.", null));
-        }
-
-        account.setRequireSafeMobile(false);
-        account.setSafeMobile(body.getMobile());
-        account.setSafeMobileArea(body.getArea_code());
-        account.save();
-        info.delete();
-
-        LinkedHashMap<String, Object> data = new LinkedHashMap<>();
-        data.put("ticket", body.getTicket());
-
-        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>() {{
+            put("realname_operation", "updated");
+            put("uid", account.getId());
+            put("name", Utils.maskString(account.getName()));
+            put("email", Utils.maskString(account.getEmail()));
+            put("identity_card", encIdentityCard);
+            put("realname", encRealName);
+        }}));
     }
 
     /**
      *  Source: <a href="https://gameapi-account.mihoyo.com/account/auth/api/bindRealname">https://gameapi-account.mihoyo.com/account/auth/api/bindRealname</a><br><br>
-     *  Method: POST<br><br>
+     *  Method: POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
-     *      - action_ticket: Ticket id<br>
-     *      - realname: Real name<br>
-     *      - identity_card: Identity card<br>
-     *      - is_crypto: is encrypted<br>
+     *      - action_ticket: Ticket id.<br>
+     *      - realname: Real name.<br>
+     *      - identity_card: Identity card.<br>
+     *      - is_crypto: Is encrypted with RSA.<br>
      */
     @PostMapping(value = "bindRealname")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendBindRealname(@RequestBody BindRealnameBody body) {
-        if(body == null || body.getIs_crypto() == null || body.getAction_ticket() == null || body.getRealname() == null || body.getIdentity_card() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter error", null));
+    public ResponseEntity<LinkedHashMap<String, Object>> SendBindRealname(@RequestBody AthBindRealnameBody body) {
+        String actionTicket = body.getTicket();
+        String realName = body.getRealname();
+        String identityCard = body.getIdentity();
+        Boolean isEncrypted = body.getIs_crypto();
+
+        if(actionTicket == null || realName == null || identityCard == null || isEncrypted == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
         }
 
-        Ticket info = Database.findTicket(body.getAction_ticket());
-        if(info == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_EXPIRED_CAPTCHA_VERIFICATION, "The authentication information has expired.", null));
+        Ticket myTicket = Database.findTicket(actionTicket, "bind_realname");
+        if(myTicket == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
         }
 
-        String identity_card = "";
-        String realname = "";
-        if(body.getIs_crypto()) {
+        String encIdentityCard = identityCard;
+        String encRealName = realName;
+        if(isEncrypted) {
             try {
-                realname = RSA.DecryptPassword(realname);
-                identity_card = RSA.DecryptPassword(identity_card);
+                realName = RSA.DecryptPassword(realName);
+                identityCard = RSA.DecryptPassword(identityCard);
             }catch(Exception ignored) {
-                return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "System error.", null));
+                return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "系统错误", null));
             }
-
-        }
-        else {
-            realname = body.getRealname();
-            identity_card = body.getIdentity_card();
         }
 
-        Account account = Database.findAccountByMobile(info.getMobile());
-        if(account == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "System error.", null));
-        }
-
-        account.setRealname(realname);
-        account.setIdentityCard(identity_card);
+        Account account = Database.findAccountById(myTicket.getAccountId());
+        account.setRealname(realName);
+        account.setIdentityCard(identityCard);
+        account.setRealPersonOperationName("None");
+        account.setRequireRealPerson(false);
         account.save();
-		info.delete();
 
-        LinkedHashMap<String, Object> data = new LinkedHashMap<>();
-        data.put("realname_operation", "completed");
-        data.put("identity_card", identity_card);
-        data.put("realname", realname);
+        myTicket.delete();
 
-        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>() {{
+            put("realname_operation", "completed");
+            put("uid", account.getId());
+            put("name", Utils.maskString(account.getName()));
+            put("email", Utils.maskString(account.getEmail()));
+            put("identity_card", encIdentityCard);
+            put("realname", encRealName);
+        }}));
     }
 
     /**
      *  Source: <a href="https://gameapi-account.mihoyo.com/account/auth/api/bindMobile">https://gameapi-account.mihoyo.com/account/auth/api/bindMobile</a><br><br>
-     *  Method: POST<br><br>
+     *  Method: POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
-     *      - area_code: mobile country code<br>
-     *      - ticket: Ticket id<br>
-     *      - mobile: mobile number<br>
-     *      - captcha: verification code<br>
-     *      - uid: account id<br>
+     *      - area_code: International mobile code.<br>
+     *      - ticket: Ticket id.<br>
+     *      - mobile: Mobile number.<br>
+     *      - captcha: Verification code.<br>
+     *      - uid: Account id.<br>
+     */
+    @PostMapping(value = "bindSafeMobile")
+    public ResponseEntity<LinkedHashMap<String, Object>> SendBindSafeMobile(@RequestBody AthBindMobileBody body) {
+        String actionTicket = body.getTicket();
+        String areaCode = body.getArea_code();
+        String mobile = body.getMobile();
+        String verCode = body.getCaptcha();
+        String userId = body.getUid();
+
+        if(areaCode == null || mobile == null || actionTicket == null || verCode == null || userId == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
+        }
+
+        Ticket myTicket = Database.findTicket(actionTicket, "bind_safemobile");
+        if(myTicket == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
+        }
+
+        if(!myTicket.getCode().equals(verCode)) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_MISSING_CONFIGURATION, "验证码错误", null));
+        }
+
+        Account account = Database.findAccountById(userId);
+        account.setRequireSafeMobile(false);
+        account.setSafeMobile(mobile);
+        account.setSafeMobileArea(areaCode.replace("+", ""));
+        account.save();
+
+        myTicket.delete();
+
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>() {{
+            put("ticket", actionTicket);
+        }}));
+    }
+
+    /**
+     *  Source: <a href="https://gameapi-account.mihoyo.com/account/auth/api/bindMobile">https://gameapi-account.mihoyo.com/account/auth/api/bindMobile</a><br><br>
+     *  Method: POST<br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
+     *      - area_code: International mobile code.<br>
+     *      - ticket: Ticket id.<br>
+     *      - mobile: Mobile number.<br>
+     *      - captcha: Verification code.<br>
+     *      - uid: Account id.<br>
      */
     @PostMapping(value = "bindMobile")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendBindMobile(@RequestBody BindMobileBody body) {
-        if(body == null || body.getCaptcha() == null || body.getTicket() == null || body.getUid() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter error", null));
+    public ResponseEntity<LinkedHashMap<String, Object>> SendBindMobile(@RequestBody AthBindMobileBody body) {
+        String area_code = body.getArea_code();
+        String mobile = body.getMobile();
+        String actionTicket = body.getTicket();
+        String verCode = body.getCaptcha();
+        String userId = body.getUid();
+
+        if(area_code == null || mobile == null || actionTicket == null || verCode == null || userId == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
         }
 
-        Ticket info = Database.findTicket(body.getTicket());
-        if(info == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_EXPIRED_CAPTCHA_VERIFICATION, "The authentication information has expired.", null));
+        Ticket myTicket = Database.findTicket(actionTicket, "bind_mobile");
+        if(myTicket == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
         }
 
-        if(!info.getCode().equals(body.getCaptcha())) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_GRANT_INVALID_CODE, "The code you provided is invalid.", null));
+        if(!myTicket.getCode().equals(verCode)) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_MISSING_CONFIGURATION, "验证码错误", null));
         }
 
-        Account account = Database.findAccountById(body.getUid());
-        if(account == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "System error.", null));
-        }
-
+        Account account = Database.findAccountById(userId);
         account.setRequireSafeMobile(false);
-        account.setMobile(body.getMobile());
-        account.setMobileArea(body.getArea_code());
+        account.setMobile(mobile);
+        account.setMobileArea(area_code.replace("+", ""));
         account.save();
-		info.delete();
 
-        LinkedHashMap<String, Object> data = new LinkedHashMap<>();
-        data.put("ticket", body.getTicket());
+        myTicket.delete();
 
-        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>() {{
+            put("ticket", actionTicket);
+        }}));
     }
 
     /**
      *  Source: <a href="https://api-account-os.hoyoverse.com/account/auth/api/getAreaCode">https://api-account-os.hoyoverse.com/account/auth/api/getAreaCode</a><br><br>
      *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br>
      */
     @RequestMapping(value = "getAreaCode", method = {RequestMethod.GET, RequestMethod.POST})
     public ResponseEntity<LinkedHashMap<String, Object>> SendAreaCode() {
@@ -402,3 +442,6 @@ public class Auth implements org.httpsrv.ResponseHandler {
 
 /// TODO Implement: https://gameapi-account.mihoyo.com/account/auth/api/bindRealperson
 /// TODO Implement: https://gameapi-account.mihoyo.com/account/auth/api/confirmRealperson
+/// TODO Implement: https://gameapi-account.mihoyo.com/account/auth/api/webLoginByPassword
+/// TODO Implement: https://gameapi-account.mihoyo.com/account/auth/api/getActionTicketByCookieToken?action_type=game_role
+/// TODO Implement: https://gameapi-account.mihoyo.com/account/auth/api/getUserAccountInfoByLToken

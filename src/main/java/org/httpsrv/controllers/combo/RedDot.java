@@ -23,8 +23,9 @@ public class RedDot implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://hk4e-sdk-os-static.hoyoverse.com/combo/red_dot/list">https://hk4e-sdk-os-static.hoyoverse.com/combo/red_dot/list</a><br><br>
-     *  Method: POST<br><br>
-     *  Parameters:<br><br>
+     *  Method: POST<br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
      *      - uid: Account id<br>
      *      - region: Region name<br>
      *      - game_biz: Genshin Impact release version type (hk4e_global/hk4e_cn)<br>

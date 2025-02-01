@@ -5,6 +5,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 
 public class AnnouncementVar {
+    public List<AnnouncementContentObject> announcementContent = new ArrayList<>();
+    public List<AnnouncementPicObject> announcementPics = new ArrayList<>();
+    public List<AnnouncementObject> announcementFullObjects = new ArrayList<>();
+    public List<AnnouncementPicFullObject> announcementPicFullObjects = new ArrayList<>();
+    public List<LinkedHashMap<String, Object>> announcementTypeList = new ArrayList<>();
+    public List<LinkedHashMap<String, Object>> announcementPicsTypeList = new ArrayList<>();
+
     public static class AnnouncementContentObject {
         public Integer ann_id;
         public String title;
@@ -51,11 +58,4 @@ public class AnnouncementVar {
         public Integer type_id;
         public String type_label;
     }
-
-    public List<AnnouncementContentObject> announcementContent = new ArrayList<>();
-    public List<AnnouncementPicObject> announcementPics = new ArrayList();
-    public List<AnnouncementObject> announcementFullObjects = new ArrayList();
-    public List<AnnouncementPicFullObject> announcementPicFullObjects = new ArrayList();
-    public List<LinkedHashMap<String, Object>> announcementTypeList = new ArrayList();
-    public List<LinkedHashMap<String, Object>> announcementPicsTypeList = new ArrayList();
 }

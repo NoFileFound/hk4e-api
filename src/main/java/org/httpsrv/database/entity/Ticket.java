@@ -10,31 +10,23 @@ import org.httpsrv.database.Database;
 /**
  * Collection: tickets
  */
+@Getter
 @Entity(value = "tickets", useDiscriminator = false)
 public class Ticket {
-    @Getter @Setter @Id private String id;
-    @Getter private String email;
-    private @Setter String type;
-    private String author;
-    private String reason;
-    @Getter private String mobile;
-    @Getter @Setter private String code;
-    @Getter @Setter private Long time; // for qr
-    @Getter @Setter private Integer state; // for qr
-    @Getter @Setter private boolean isVerified;
+    @Setter @Id private String id;
+    @Setter private String accountId;
+    @Setter private String type;
+    @Setter private String code;
+    @Setter private Long time; // for qr
+    @Setter private Integer state; // for qr
+    @Setter private boolean isVerified;
+    private String createdAt;
+    @Setter private String modifiedAt;
 
-    /// bind, devide grant
-    public Ticket(String email, String type, String author, String reason, boolean useMobile) {
-        if(useMobile) {
-            this.mobile = email;
-        }
-        else {
-            this.email = email;
-        }
+    public Ticket(String accountId, String type) {
         this.id = Random.generateStr(10);
+        this.accountId = accountId;
         this.type = type;
-        this.author = author;
-        this.reason = reason;
     }
 
     /// qr login
@@ -42,16 +34,15 @@ public class Ticket {
         this.id = Random.generateStr(10);
         this.type = type;
         this.time = time;
-        this.author = "System";
-        this.reason = "login with qr code";
         this.state = 0;
+        this.createdAt = String.valueOf(System.currentTimeMillis() / 1000);
     }
 
     public void save() {
-        Database.saveAccountAsync(this);
+        Database.saveObjectAsync(this);
     }
 
     public void delete() {
-        Database.deleteAccountAsync(this);
+        Database.deleteObjectAsync(this);
     }
 }

@@ -15,7 +15,7 @@ public final class Utils {
     }
 
     public static boolean checkGameLanguage(String language) {
-        return language.equals("en") || language.equals("zh-tw") || language.equals("zh-cn") || language.equals("ja-jp");
+        return language.equals("en") || language.equals("zh-tw") || language.equals("zh-cn") || language.equals("ja-jp") || language.equals("pt");
     }
 
     public static boolean checkGameVersion(String version) {

@@ -1,20 +1,22 @@
 package org.httpsrv.controllers.mdk;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import org.httpsrv.algorithms.RSA;
 import org.httpsrv.algorithms.Random;
 import org.httpsrv.conf.Config;
 import org.httpsrv.data.ApplicationId;
 import org.httpsrv.data.Retcode;
-import org.httpsrv.data.body.*;
+import org.httpsrv.data.body.account.AthBindRealnameBody;
+import org.httpsrv.data.body.shield.*;
 import org.httpsrv.database.Database;
 import org.httpsrv.database.entity.Account;
 import org.httpsrv.database.entity.Ticket;
 import org.httpsrv.thirdparty.GeoIP;
 import org.httpsrv.thirdparty.JakartaMail;
 import org.httpsrv.thirdparty.TwilioApi;
+import org.httpsrv.utils.Jackson;
 import org.httpsrv.utils.Utils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -33,141 +35,133 @@ public class Shield implements org.httpsrv.ResponseHandler {
     }
 
     /**
-     *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/bindEmail">https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/bindEmail</a><br><br>
-     *  Methods: GET, POST<br><br>
-     *  Parameters:<br>
-     *      - action_ticket: Ticket id<br>
-     *      - email: Email address<br>
-     */
-    @RequestMapping(value = "bindEmail")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendEmail(@RequestBody BindEmailBody body) {
-        if(body == null || body.getEmail() == null || body.getAction_ticket() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter error", null));
-        }
-
-        Ticket info = Database.findTicket(body.getAction_ticket());
-        if(info == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "System error.", null));
-        }
-
-        Account account = Database.findAccountByMobile(info.getMobile());
-        if(account == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "System error.", null));
-        }
-
-        account.setEmail(body.getEmail());
-
-        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", null));
-    }
-
-    /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/loginByAuthTicket">https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/loginByAuthTicket</a><br><br>
-     *  Method: POST<br><br>
+     *  Method: GET, POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - app_id: Application id<br>
      *      - ticket: Ticket id<br>
      */
     @PostMapping(value = "loginByAuthTicket")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendLoginByAuthTicket(@RequestBody LoginByAuthTicketBody body, HttpServletRequest request) {
-        if(body == null || body.getTicket() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter error", null));
+    public ResponseEntity<LinkedHashMap<String, Object>> SendLoginByAuthTicket(@RequestBody ShdLoginByAuthTicketBody body, @RequestHeader(value = "x-rpc-device_id") String device_id, HttpServletRequest request) {
+        String authTicket = body.getTicket();
+        Integer appId = body.getApp_id();
+
+        if(authTicket == null || appId == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
         }
 
-        if(body.getApp_id() != ApplicationId.GENSHIN_RELEASE.getValue() &&
-                body.getApp_id() != ApplicationId.GENSHIN_SANDBOX_OVERSEAS.getValue() &&
-                body.getApp_id() != ApplicationId.GENSHIN_SANDBOX_CHINA.getValue()) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "System error", null));
+        if(appId != ApplicationId.GENSHIN_RELEASE.getValue() &&
+                appId != ApplicationId.GENSHIN_SANDBOX_OVERSEAS.getValue() &&
+                appId != ApplicationId.GENSHIN_SANDBOX_CHINA.getValue()) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
         }
 
-        Ticket info = Database.findTicket(body.getTicket());
-        if(info == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "Invalid ticket.", null));
+        Ticket myTicket = Database.findTicket(authTicket, "AuthLoginTicket");
+        if(myTicket == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数不合法", null));
         }
 
-        Account account;
-        if(info.getMobile().isEmpty()) {
-            account = Database.findAccountByEmail(info.getEmail());
-        }
-        else {
-            account = Database.findAccountByMobile(info.getMobile());
-        }
-        if(account == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "System error.", null));
+        Account acc = Database.findAccountById(myTicket.getAccountId());
+        if(acc == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数不合法", null));
         }
 
-        info.delete();
-        LinkedHashMap<String, Object> data = new LinkedHashMap<>();
+        myTicket.delete();
 
-        data.put("login_ticket", body.getTicket());
-        data.put("need_realperson", account.getRequireRealPerson());
-        data.put("reactivate_info", new LinkedHashMap<String, Object>() {{
-            put("required", account.getRequireActivation());
-            put("ticket", account.getRequireActivation() ? Database.findTicket(account.getMobile().isEmpty() ? account.getEmail() : account.getMobile(), "Reactivation", !account.getMobile().isEmpty()).getId() : "");
-        }});
-        data.put("realname_info", new LinkedHashMap<String, Object>() {{
-            put("required", account.getRequireRealPerson());
-            put("action_ticket", account.getRequireActivation() ? Database.findTicket(account.getMobile().isEmpty() ? account.getEmail() : account.getMobile(), "Realperson", !account.getMobile().isEmpty()).getId() : "");
-            put("action_type", "");
-        }});
-        data.put("token", new LinkedHashMap<String, Object>() {{
-            put("token", account.getSessionKey());
-            put("token_version", 1);
-        }});
-        data.put("user_info", new LinkedHashMap<String, Object>() {{
-            put("account_name", account.getName());
-            put("aid", account.getId());
-            put("area_code", Utils.maskString(account.getMobileArea()));
-            put("country", GeoIP.getCountryCode(request.getRemoteAddr()));
-            put("email", Utils.maskString(account.getEmail()));
-            put("identity_code", Utils.maskString(account.getIdentityCard()));
-            put("is_email_verify", account.getIsEmailVerified() ? 1 : 0);
-            put("links", new ArrayList<>());
-            put("mid", "12ya9usebi_hy");
-            put("mobile", Utils.maskString(account.getMobile()));
-            put("realname", Utils.maskString(account.getRealname()));
-            put("rebind_area_code", "");
-            put("rebind_mobile", "");
-            put("rebind_mobile_time", "0");
-            put("safe_area_code", Utils.maskString(account.getSafeMobileArea()));
-            put("safe_mobile", Utils.maskString(account.getSafeMobile()));
-            put("unmasked_email", "");
-            put("unmasked_email_type", "0");
-        }});
+        String token = Random.generateStr(30);
+        acc.setSessionKey(token);
+        acc.setCurrentDeviceId(device_id);
 
-        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
+        Ticket _deviceGrantTicket = Database.findTicketByAccountId(acc.getId(), "device_grant");
+        if(!acc.getCurrentIP().equals(request.getRemoteAddr()) && !acc.getDeviceIds().contains(device_id)) {
+            if(_deviceGrantTicket == null) {
+                _deviceGrantTicket = new Ticket(acc.getId(), "device_grant");
+                _deviceGrantTicket.save();
+            }
+        } else if(!acc.getDeviceIds().contains(device_id)) {
+            acc.getDeviceIds().add(device_id);
+        }
+
+        if(acc.getRealname().isEmpty()) {
+            acc.setRequireRealPerson(true);
+            acc.setRealPersonOperationName("bindRealname");
+        }
+
+        acc.save();
+        Ticket reactivationTicket = Database.findTicketByAccountId(acc.getId(), "reactivation");
+        Ticket deviceGrantTicket = _deviceGrantTicket;
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>() {{
+            put("account", new LinkedHashMap<>() {{
+                put("id", acc.getId());
+                put("name", acc.getName());
+                put("email", Utils.maskString(acc.getEmail()));
+                put("mobile", Utils.maskString(acc.getMobile()));
+                put("is_email_verify", acc.getIsEmailVerified() ? '1' : '0');
+                put("realname", Utils.maskString(acc.getRealname()));
+                put("identity_card", Utils.maskString(acc.getIdentityCard()));
+                put("token", token);
+                put("facebook_name", Utils.maskString(acc.getFacebookName()));
+                put("google_name", Utils.maskString(acc.getGoogleName()));
+                put("twitter_name", Utils.maskString(acc.getTwitterName()));
+                put("game_center_name", Utils.maskString(acc.getGameCenterName()));
+                put("apple_name", Utils.maskString(acc.getAppleName()));
+                put("sony_name", Utils.maskString(acc.getSonyName()));
+                put("tap_name", Utils.maskString(acc.getTapName()));
+                put("country", GeoIP.getCountryCode(request.getRemoteAddr()));
+                put("reactivate_ticket", (reactivationTicket == null) ? "" : reactivationTicket.getId());
+                put("area_code", Utils.maskString(acc.getMobileArea()));
+                put("device_grant_ticket", (deviceGrantTicket == null) ? "" : deviceGrantTicket.getId());
+                put("steam_name", Utils.maskString(acc.getSteamName()));
+                put("unmasked_email", "");
+                put("unmasked_email_type", "0");
+                put("cx_name", Utils.maskString(acc.getCxName()));
+            }});
+            put("realperson_required", acc.getRequireRealPerson());
+            put("safe_moblie_required", acc.getRequireSafeMobile());
+            put("reactivate_required", acc.getRequireActivation());
+            put("device_grant_required", acc.getRequireDeviceGrant());
+            put("realname_operation", acc.getRealPersonOperationName());
+        }}));
     }
 
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/emailCaptcha">https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/emailCaptcha</a><br><br>
-     *  Methods: GET, POST<br><br>
+     *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - action_ticket: Ticket id<br>
      *      - action_type: Action type<br>
      *      - email: email address<br>
      */
     @RequestMapping(value = "emailCaptcha")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendEmailCaptcha(@RequestBody EmailCaptchaBody body) {
-        if(body == null || body.getEmail() == null || body.getAction_ticket() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter error", null));
+    public ResponseEntity<LinkedHashMap<String, Object>> SendEmailCaptcha(@RequestBody ShdEmailCaptchaBody body) {
+        String actionTicket = body.getAction_ticket();
+        String actionType = body.getAction_type();
+        String email = body.getEmail();
+
+        if(actionTicket == null || actionType == null || email == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
         }
 
-        Ticket info = Database.findTicket(body.getAction_ticket());
-        if(info == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "System error.", null));
+        Ticket myTicket = Database.findTicket(actionTicket, actionType);
+        if(myTicket == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
         }
+
         String code = Random.generateCode();
-
-        JakartaMail.sendMessage(body.getEmail(), "Bind email.", "Your activation code is " + code);
-        info.setCode(code);
-        info.setType("BindEmail");
-        info.save();
+        JakartaMail.sendMessage(body.getEmail(), "Activation code!", String.format("Your activation code is %s", code));
+        myTicket.setCode(code);
+        myTicket.setType(actionType);
+        myTicket.save();
 
         return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", null));
     }
 
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/bindRealname">https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/bindRealname</a><br><br>
-     *  Methods: GET, POST<br><br>
+     *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - action_ticket: Ticket id<br>
      *      - realname: Real name<br>
@@ -175,52 +169,55 @@ public class Shield implements org.httpsrv.ResponseHandler {
      *      - is_crypto: is encrypted<br>
      */
     @RequestMapping(value = "bindRealname")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendRealname(@RequestBody BindRealnameBody body) {
-        if(body == null || body.getIs_crypto() == null || body.getAction_ticket() == null || body.getRealname() == null || body.getIdentity_card() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter error", null));
+    public ResponseEntity<LinkedHashMap<String, Object>> SendRealname(@RequestBody AthBindRealnameBody body) {
+        String actionTicket = body.getTicket();
+        String realName = body.getRealname();
+        String identityCard = body.getIdentity();
+        Boolean isEncrypted = body.getIs_crypto();
+
+        if(actionTicket == null || realName == null || identityCard == null || isEncrypted == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
         }
 
-        Ticket info = Database.findTicket(body.getAction_ticket());
-        if(info == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "System error.", null));
+        Ticket myTicket = Database.findTicket(actionTicket, "bind_realname");
+        if(myTicket == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
         }
 
-        String identity_card = "";
-        String realname = "";
-        if(body.getIs_crypto()) {
+        String encIdentityCard = identityCard;
+        String encRealName = realName;
+        if(isEncrypted) {
             try {
-                realname = RSA.DecryptPassword(realname);
-                identity_card = RSA.DecryptPassword(identity_card);
+                realName = RSA.DecryptPassword(realName);
+                identityCard = RSA.DecryptPassword(identityCard);
             }catch(Exception ignored) {
-                return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "System error.", null));
+                return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "系统错误", null));
             }
-
-        }
-        else {
-            realname = body.getRealname();
-            identity_card = body.getIdentity_card();
         }
 
-        Account account = Database.findAccountByMobile(info.getMobile());
-        if(account == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "System error.", null));
-        }
-
-        account.setRealname(realname);
-        account.setIdentityCard(identity_card);
+        Account account = Database.findAccountById(myTicket.getAccountId());
+        account.setRealname(realName);
+        account.setIdentityCard(identityCard);
+        account.setRealPersonOperationName("None");
+        account.setRequireRealPerson(false);
         account.save();
 
-        LinkedHashMap<String, Object> data = new LinkedHashMap<>();
-        data.put("realname_operation", "updated");
-        data.put("identity_card", identity_card);
-        data.put("realname", realname);
+        myTicket.delete();
 
-        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>() {{
+            put("realname_operation", "completed");
+            put("uid", account.getId());
+            put("name", Utils.maskString(account.getName()));
+            put("email", Utils.maskString(account.getEmail()));
+            put("identity_card", encIdentityCard);
+            put("realname", encRealName);
+        }}));
     }
 
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/loginMobile">https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/loginMobile</a><br><br>
-     *  Methods: GET, POST<br><br>
+     *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - action: Action<br>
      *      - area: Mobile country<br>
@@ -228,94 +225,101 @@ public class Shield implements org.httpsrv.ResponseHandler {
      *      - mobile: mobile number<br>
      */
     @RequestMapping(value = "loginMobile")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendLoginMobile(@RequestBody LoginMobileBody body, @RequestHeader(value = "x-rpc-device_id", required = false) String device_id, HttpServletRequest request) {
-        if(body == null || body.getMobile() == null || body.getCaptcha() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter error", null));
+    public ResponseEntity<LinkedHashMap<String, Object>> SendLoginMobile(@RequestBody ShdLoginMobileBody body, @RequestHeader(value = "x-rpc-device_id") String device_id, HttpServletRequest request) {
+        String mobile = body.getMobile();
+        String captcha = body.getCaptcha();
+
+        if(mobile == null || captcha == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
         }
 
-        Ticket info = Database.findTicket(body.getMobile(), "MobileLogin", true);
-        if(info == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "System error", null));
+        Account acc = Database.findAccountByMobile(mobile);
+        if(acc == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
         }
 
-        if(!info.getCode().equals(body.getCaptcha())) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_INVALID_ACCOUNT, "Invalid code", null));
+        Ticket myTicket = Database.findTicket(acc.getId(), "mobileLogin");
+        if(myTicket == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
         }
 
-        Account account = Database.findAccountByMobile(body.getMobile());
-        if(account == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "System error", null));
+        if(!myTicket.getCode().equals(body.getCaptcha())) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_MISSING_CONFIGURATION, "验证码错误", null));
         }
 
-        info.delete();
+        myTicket.delete();
 
         String token = Random.generateStr(30);
-        String ticketId = "";
-        account.setSessionKey(token);
-        account.setCurrentDeviceId(device_id);
-        if(!account.getCurrentIP().equals(request.getRemoteAddr()) && !account.getDeviceIds().contains(device_id)) {
-            if(Database.findTicket(account.getMobile(), "DeviceGrant", true) == null) {
-                Ticket newTicket = new Ticket(account.getMobile(), "DeviceGrant", "System", "", true);
-                newTicket.save();
-                ticketId = newTicket.getId();
-                account.setRequireDeviceGrant(true);
+        acc.setSessionKey(token);
+        acc.setCurrentDeviceId(device_id);
+
+        Ticket _deviceGrantTicket = Database.findTicketByAccountId(acc.getId(), "device_grant");
+        if(!acc.getCurrentIP().equals(request.getRemoteAddr()) && !acc.getDeviceIds().contains(device_id)) {
+            if(_deviceGrantTicket == null) {
+                _deviceGrantTicket = new Ticket(acc.getId(), "device_grant");
+                _deviceGrantTicket.save();
             }
-        }else if(!account.getDeviceIds().contains(device_id)) {
-			account.getDeviceIds().add(device_id);
-		}
-		
-        account.save();
+        } else if(!acc.getDeviceIds().contains(device_id)) {
+            acc.getDeviceIds().add(device_id);
+        }
 
-        LinkedHashMap<String, Object> data = new LinkedHashMap<>();
-        LinkedHashMap<String, Object> acc = new LinkedHashMap<>();
+        if(acc.getRealname().isEmpty()) {
+            acc.setRequireRealPerson(true);
+            acc.setRealPersonOperationName("bindRealname");
+        }
 
-        acc.put("uid", account.getId());
-        acc.put("name", account.getName());
-        acc.put("email", Utils.maskString(account.getEmail()));
-        acc.put("mobile", Utils.maskString(account.getMobile()));
-        acc.put("is_email_verify", account.getIsEmailVerified() ? '1' : '0');
-        acc.put("realname", Utils.maskString(account.getRealname()));
-        acc.put("identity_card", Utils.maskString(account.getIdentityCard()));
-        acc.put("token", account.getSessionKey());
-        acc.put("facebook_name", Utils.maskString(account.getFacebookName()));
-        acc.put("google_name", Utils.maskString(account.getGoogleName()));
-        acc.put("twitter_name", Utils.maskString(account.getTwitterName()));
-        acc.put("game_center_name", Utils.maskString(account.getGameCenterName()));
-        acc.put("apple_name", Utils.maskString(account.getAppleName()));
-        acc.put("sony_name", Utils.maskString(account.getSonyName()));
-        acc.put("tap_name", Utils.maskString(account.getTapName()));
-        acc.put("country", GeoIP.getCountryCode(request.getRemoteAddr()));
-        acc.put("reactivate_ticket", account.getRequireActivation() ? Database.findTicket(account.getMobile(), "Reactivation", true).getId() : "");
-        acc.put("area_code", Utils.maskString(account.getMobileArea()));
-        acc.put("device_grant_ticket", ticketId.isEmpty() ? account.getRequireDeviceGrant() ? Database.findTicket(account.getMobile(), "DeviceGrant", true).getId() : "" : ticketId);
-        acc.put("steam_name", Utils.maskString(account.getSteamName()));
-        acc.put("unmasked_email", "");
-        acc.put("unmasked_email_type", "0");
-        acc.put("safe_mobile", Utils.maskString(account.getSafeMobile()));
-        acc.put("safe_area_code", Utils.maskString(account.getSafeMobileArea()));
-        acc.put("cx_name", Utils.maskString(account.getCxName()));
-
-        data.put("account", acc);
-        data.put("realperson_required", account.getRequireRealPerson());
-        data.put("safe_moblie_required", account.getRequireSafeMobile());
-        data.put("reactivate_required", account.getRequireActivation());
-        data.put("device_grant_required", account.getRequireDeviceGrant());
-        data.put("realname_operation", account.getRealPersonOperationName());
-
-        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
+        acc.save();
+        Ticket reactivationTicket = Database.findTicketByAccountId(acc.getId(), "reactivation");
+        Ticket deviceGrantTicket = _deviceGrantTicket;
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>() {{
+            put("account", new LinkedHashMap<>() {{
+                put("id", acc.getId());
+                put("name", acc.getName());
+                put("email", Utils.maskString(acc.getEmail()));
+                put("mobile", Utils.maskString(acc.getMobile()));
+                put("is_email_verify", acc.getIsEmailVerified() ? '1' : '0');
+                put("realname", Utils.maskString(acc.getRealname()));
+                put("identity_card", Utils.maskString(acc.getIdentityCard()));
+                put("token", token);
+                put("facebook_name", Utils.maskString(acc.getFacebookName()));
+                put("google_name", Utils.maskString(acc.getGoogleName()));
+                put("twitter_name", Utils.maskString(acc.getTwitterName()));
+                put("game_center_name", Utils.maskString(acc.getGameCenterName()));
+                put("apple_name", Utils.maskString(acc.getAppleName()));
+                put("sony_name", Utils.maskString(acc.getSonyName()));
+                put("tap_name", Utils.maskString(acc.getTapName()));
+                put("country", GeoIP.getCountryCode(request.getRemoteAddr()));
+                put("reactivate_ticket", (reactivationTicket == null) ? "" : reactivationTicket.getId());
+                put("area_code", Utils.maskString(acc.getMobileArea()));
+                put("device_grant_ticket", (deviceGrantTicket == null) ? "" : deviceGrantTicket.getId());
+                put("steam_name", Utils.maskString(acc.getSteamName()));
+                put("unmasked_email", "");
+                put("unmasked_email_type", "0");
+                put("cx_name", Utils.maskString(acc.getCxName()));
+            }});
+            put("realperson_required", acc.getRequireRealPerson());
+            put("safe_moblie_required", acc.getRequireSafeMobile());
+            put("reactivate_required", acc.getRequireActivation());
+            put("device_grant_required", acc.getRequireDeviceGrant());
+            put("realname_operation", acc.getRealPersonOperationName());
+        }}));
     }
 
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/loginCaptcha">https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/loginCaptcha</a><br><br>
-     *  Methods: GET, POST<br><br>
+     *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - area: Mobile country<br>
      *      - mobile: Mobile number<br>
      */
     @RequestMapping(value = "loginCaptcha")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendLoginCaptcha(@RequestBody LoginCaptchaBody body, @RequestHeader(value = "x-rpc-device_id", required = false) String device_id, @RequestHeader(value = "x-rpc-risky", required = false) String risky_type) {
-        if(body == null || risky_type == null || device_id == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter error", null));
+    public ResponseEntity<LinkedHashMap<String, Object>> SendLoginCaptcha(@RequestBody ShdLoginCaptchaBody body, @RequestHeader(value = "x-rpc-device_id") String device_id, @RequestHeader(value = "x-rpc-risky") String risky_type) {
+        String areaCode = body.getArea();
+        String mobile = body.getMobile();
+
+        if(areaCode == null || mobile == null || risky_type == null || device_id == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
         }
 
         try {
@@ -326,103 +330,100 @@ public class Shield implements org.httpsrv.ResponseHandler {
                 }
 
                 if(!Random.compareRiskyId(device_id, risky_type)) {
-                    return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "The current network environment is at risk.", null));
+                    return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "请求失败，当前网络环境存在风险", null));
                 }
             }
         } catch(Exception ignore) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "Internal Server Error", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
         }
 
-        Account account = Database.findAccountByMobile(body.getMobile());
+        Account account = Database.findAccountByMobile(mobile);
         if(account == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_INVALID_ACCOUNT, "Phone number not found.", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_INVALID_ACCOUNT, "未找到账户", null));
         }
 
-        LinkedHashMap<String, Object> data = new LinkedHashMap<>();
-        if(Database.findTicket(body.getMobile(), "MobileLogin", true) == null) {
-            Ticket newTicket = new Ticket(body.getMobile(), "MobileLogin", "System", "use to login", true);
-            newTicket.setCode(Random.generateCode());
-            newTicket.save();
-            TwilioApi.sendSms(body.getMobile(), "mobile login. your code is " + newTicket.getCode());
+        Ticket myTicket = Database.findTicketByAccountId(account.getId(), "mobileLogin");
+        if(myTicket == null) {
+            myTicket = new Ticket(account.getId(), "mobileLogin");
+            myTicket.setCode(Random.generateCode());
+            myTicket.save();
+            TwilioApi.sendSms(body.getMobile(), "mobile login. your code is " + myTicket.getCode());
         }
 
-        data.put("protocol", true);
-        data.put("qr_enabled", Config.getHttpConfig().useQRLogin);
-        data.put("log_level", Config.getHttpConfig().apiLogLevel);
-        data.put("action", "Login");
-
-        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>() {{
+            put("protocol", true);
+            put("qr_enabled", Config.getHttpConfig().useQRLogin);
+            put("log_level", Config.getHttpConfig().apiLogLevel);
+            put("action", "Login");
+        }}));
     }
 
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/reactivateAccount">https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/reactivateAccount</a><br><br>
-     *  Methods: GET, POST<br><br>
+     *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - action_ticket: Ticket id<br>
      */
     @RequestMapping(value = "reactivateAccount")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendReactivateAccount(@RequestBody ReactivateAccountBody body, HttpServletRequest request) {
-        if(body == null || body.getAction_ticket() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter error", null));
+    public ResponseEntity<LinkedHashMap<String, Object>> SendReactivateAccount(@RequestBody ShdReactivateAccountBody body, HttpServletRequest request) {
+        String actionTicket = body.getAction_ticket();
+
+        if(actionTicket == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
         }
 
-        Ticket info = Database.findTicket(body.getAction_ticket());
-        if(info == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "System error.", null));
+        Ticket myTicket = Database.findTicket(actionTicket, "reactivation");
+        if(myTicket == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
         }
 
-        Account account;
-        if(info.getMobile().isEmpty()) {
-            account = Database.findAccountByEmail(info.getEmail());
-        }
-        else {
-            account = Database.findAccountByMobile(info.getMobile());
-        }
+        Account acc = Database.findAccountByEmail(myTicket.getAccountId());
 
-        account.setRequireActivation(false);
-        account.save();
-        Database.deleteTicketById(body.getAction_ticket());
+        acc.setRequireActivation(false);
+        acc.save();
 
-        LinkedHashMap<String, Object> data = new LinkedHashMap<>();
-        LinkedHashMap<String, Object> acc = new LinkedHashMap<>();
+        myTicket.delete();
 
-        acc.put("uid", account.getId());
-        acc.put("name", account.getName());
-        acc.put("email", Utils.maskString(account.getEmail()));
-        acc.put("mobile", Utils.maskString(account.getMobile()));
-        acc.put("is_email_verify", account.getIsEmailVerified() ? '1' : '0');
-        acc.put("realname", Utils.maskString(account.getRealname()));
-        acc.put("identity_card", Utils.maskString(account.getIdentityCard()));
-        acc.put("token", account.getSessionKey());
-        acc.put("facebook_name", Utils.maskString(account.getFacebookName()));
-        acc.put("google_name", Utils.maskString(account.getGoogleName()));
-        acc.put("twitter_name", Utils.maskString(account.getTwitterName()));
-        acc.put("game_center_name", Utils.maskString(account.getGameCenterName()));
-        acc.put("apple_name", Utils.maskString(account.getAppleName()));
-        acc.put("sony_name", Utils.maskString(account.getSonyName()));
-        acc.put("tap_name", Utils.maskString(account.getTapName()));
-        acc.put("country", GeoIP.getCountryCode(request.getRemoteAddr()));
-        acc.put("reactivate_ticket", account.getRequireActivation() ? Database.findTicket(account.getMobile().isEmpty() ? account.getEmail() : account.getMobile(), "Reactivation", !account.getMobile().isEmpty()).getId() : "");
-        acc.put("area_code", Utils.maskString(account.getMobileArea()));
-        acc.put("device_grant_ticket", account.getRequireDeviceGrant() ? Database.findTicket(account.getMobile().isEmpty() ? account.getEmail() : account.getMobile(), "DeviceGrant", !account.getMobile().isEmpty()).getId() : "");
-        acc.put("steam_name", Utils.maskString(account.getSteamName()));
-        acc.put("unmasked_email", "");
-        acc.put("unmasked_email_type", "0");
-        acc.put("safe_mobile", Utils.maskString(account.getSafeMobile()));
-        acc.put("safe_area_code", Utils.maskString(account.getSafeMobileArea()));
-        acc.put("cx_name", Utils.maskString(account.getCxName()));
-
-        data.put("account", acc);
-        data.put("safe_moblie_required", account.getRequireSafeMobile());
-        data.put("device_grant_required", account.getRequireDeviceGrant());
-        data.put("realname_operation", account.getRealPersonOperationName());
-
-        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
+        Ticket deviceGrantTicket = Database.findTicketByAccountId(acc.getId(), "device_grant");
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>() {{
+            put("account", new LinkedHashMap<>() {{
+                put("id", acc.getId());
+                put("name", acc.getName());
+                put("email", Utils.maskString(acc.getEmail()));
+                put("mobile", Utils.maskString(acc.getMobile()));
+                put("is_email_verify", acc.getIsEmailVerified() ? '1' : '0');
+                put("realname", Utils.maskString(acc.getRealname()));
+                put("identity_card", Utils.maskString(acc.getIdentityCard()));
+                put("token", acc.getSessionKey());
+                put("facebook_name", Utils.maskString(acc.getFacebookName()));
+                put("google_name", Utils.maskString(acc.getGoogleName()));
+                put("twitter_name", Utils.maskString(acc.getTwitterName()));
+                put("game_center_name", Utils.maskString(acc.getGameCenterName()));
+                put("apple_name", Utils.maskString(acc.getAppleName()));
+                put("sony_name", Utils.maskString(acc.getSonyName()));
+                put("tap_name", Utils.maskString(acc.getTapName()));
+                put("country", GeoIP.getCountryCode(request.getRemoteAddr()));
+                put("reactivate_ticket", "");
+                put("area_code", Utils.maskString(acc.getMobileArea()));
+                put("device_grant_ticket", (deviceGrantTicket == null) ? "" : deviceGrantTicket.getId());
+                put("steam_name", Utils.maskString(acc.getSteamName()));
+                put("unmasked_email", "");
+                put("unmasked_email_type", "0");
+                put("cx_name", Utils.maskString(acc.getCxName()));
+            }});
+            put("realperson_required", acc.getRequireRealPerson());
+            put("safe_moblie_required", acc.getRequireSafeMobile());
+            put("reactivate_required", acc.getRequireActivation());
+            put("device_grant_required", acc.getRequireDeviceGrant());
+            put("realname_operation", acc.getRealPersonOperationName());
+        }}));
     }
 
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/mobileCaptcha">https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/mobileCaptcha</a><br><br>
-     *  Methods: GET, POST<br><br>
+     *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - action_ticket: Ticket id<br>
      *      - action_type: Action type<br>
@@ -430,46 +431,61 @@ public class Shield implements org.httpsrv.ResponseHandler {
      *      - safe_mobile: is binding safe mobile<br>
      */
     @RequestMapping(value = "mobileCaptcha")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendMobileCaptcha(@RequestBody MobileCaptchaBody body) {
-        if(body == null || body.getMobile() == null || body.getAction_ticket() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter error", null));
+    public ResponseEntity<LinkedHashMap<String, Object>> SendMobileCaptcha(@RequestBody ShdMobileCaptchaBody body) {
+        String actionTicket = body.getAction_ticket();
+        String actionType = body.getAction_type();
+        String mobile = body.getMobile();
+
+        if(actionTicket == null || actionType == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
         }
 
-        Ticket info = Database.findTicket(body.getAction_ticket());
-        if(info == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "System error.", null));
+        Ticket myTicket = Database.findTicket(actionTicket, actionType);
+        if(myTicket == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
         }
+
+        Account account = Database.findAccountByMobile(mobile);
+        if(account == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
+        }
+
         String code = Random.generateCode();
 
-        TwilioApi.sendSms(info.getMobile(), "Bind mobile. Your activation code is " + code);
-        info.setCode(code);
-        info.setType("BindMobile");
-        info.save();
+        TwilioApi.sendSms(mobile, String.format("Your activation code is %s", code));
+        myTicket.setCode(code);
+        myTicket.setType(actionType);
+        myTicket.save();
 
         return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", null));
     }
 
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/verifyEmailCaptcha">https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/verifyEmailCaptcha</a><br><br>
-     *  Methods: GET, POST<br><br>
+     *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - action_ticket: Ticket id<br>
      *      - action_type: Action type<br>
      *      - captcha: code<br>
      */
     @RequestMapping(value = {"verifyEmailCaptcha", "verifyMobileCaptcha"})
-    public ResponseEntity<LinkedHashMap<String, Object>> SendVerifyEmailCaptcha(@RequestBody VerifyEmailCaptchaBody body) {
-        if(body == null || body.getCaptcha() == null || body.getAction_ticket() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter error", null));
+    public ResponseEntity<LinkedHashMap<String, Object>> SendVerifyEmailCaptcha(@RequestBody ShdVerifyEmailCaptchaBody body) {
+        String actionTicket = body.getAction_ticket();
+        String actionType = body.getAction_type();
+        String captcha = body.getCaptcha();
+
+        if(captcha == null || actionTicket == null || actionType == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
         }
 
-        Ticket info = Database.findTicket(body.getAction_ticket());
-        if(info == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "System error.", null));
+        Ticket myTicket = Database.findTicket(actionTicket, actionType);
+        if(myTicket == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
         }
 
-        if(!info.getCode().equals(body.getCaptcha())) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_GRANT_INVALID_CODE, "The code you provided is invalid.", null));
+        if(!myTicket.getCode().equals(captcha)) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_MISSING_CONFIGURATION, "验证码错误", null));
         }
 
         return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", null));
@@ -477,16 +493,20 @@ public class Shield implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/emailCaptchaByActionTicket">https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/emailCaptchaByActionTicket</a><br><br>
-     *  Methods: GET, POST<br><br>
+     *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - account id: Account uid<br>
      *      - action_type: Action type<br>
      *      - game_token: Account session token<br>
      */
     @RequestMapping(value = "emailCaptchaByActionTicket")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendEmailCaptchaByActionTicket(@RequestBody EmailCaptchaActionTicketBody body, @RequestHeader(value = "x-rpc-device_id", required = false) String device_id, @RequestHeader(value = "x-rpc-risky", required = false) String risky_type) {
-        if(body == null || risky_type == null || device_id == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter error", null));
+    public ResponseEntity<LinkedHashMap<String, Object>> SendEmailCaptchaByActionTicket(@RequestBody ShdEmailCaptchaActionTicketBody body, @RequestHeader(value = "x-rpc-device_id") String device_id, @RequestHeader(value = "x-rpc-risky") String risky_type) {
+        String actionTicket = body.getAction_ticket();
+        String actionType = body.getAction_type();
+
+        if(actionTicket == null || risky_type == null || device_id == null || actionType == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
         }
 
         try {
@@ -497,124 +517,142 @@ public class Shield implements org.httpsrv.ResponseHandler {
                 }
 
                 if(!Random.compareRiskyId(device_id, risky_type)) {
-                    return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "The current network environment is at risk.", null));
+                    return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "请求失败，当前网络环境存在风险", null));
                 }
             }
         } catch(Exception ignore) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "Internal Server Error", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
         }
 
-        Ticket info = Database.findTicket(body.getAction_ticket());
-        if(info == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "System error.", null));
+        Ticket myTicket = Database.findTicket(actionTicket, actionType);
+        if(myTicket == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
+        }
+
+        Account account = Database.findAccountById(myTicket.getAccountId());
+        if(account == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
         }
 
         String code = Random.generateCode();
-        JakartaMail.sendMessage(info.getEmail(), "Device verification", "Your activation code is " + code);
+        JakartaMail.sendMessage(account.getEmail(), "Activation code", String.format("Your activation code is %s", code));
 
-        info.setCode(code);
-        info.save();
+        myTicket.setCode(code);
+        myTicket.setModifiedAt(String.valueOf(System.currentTimeMillis() / 1000));
+        myTicket.save();
 
         return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", null));
     }
 
     /**
-     *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/verify">https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/verify</a><br><br>
-     *  Methods: GET, POST<br><br>
+     *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/actionTicket">https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/actionTicket</a><br><br>
+     *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - account id: Account uid<br>
      *      - action_type: Action type<br>
      *      - game_token: Account session token<br>
      */
     @RequestMapping(value = "actionTicket")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendVerify(@RequestBody ActionTicketBody body) {
-        if(body == null || body.getAccount_id() == null || body.getGame_token() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "The current network environment is at risk.", null));
+    public ResponseEntity<LinkedHashMap<String, Object>> SendActionTicket(@RequestBody ShdActionTicketBody body) {
+        String accountId = body.getAccount_id();
+        String gameToken = body.getGame_token();
+        String actionType = body.getAction_type();
+
+        if((accountId == null && gameToken == null) || actionType == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "请求失败，当前网络环境存在风险", null));
         }
 
-        Account account = Database.findAccountByToken(body.getGame_token());
-        if(account == null || account.getIsEmailVerified()) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_MISSING_CONFIGURATION, "System error.", null));
-        }
-
-        LinkedHashMap<String, Object> data = new LinkedHashMap<>();
-        if(Database.findTicket(account.getEmail(), "DeviceGrant", false) == null) {
-            Ticket newTicket = new Ticket(account.getEmail(), "DeviceGrant", "System", "Bind mobile", false);
-            newTicket.save();
-            data.put("ticket", newTicket.getId());
+        Account account;
+        if(isDebug() && (accountId != null && !accountId.isEmpty())) {
+            account = Database.findAccountById(accountId);
         }
         else {
-            Ticket newTicket = Database.findTicket(account.getEmail(), "DeviceGrant", false);
-            data.put("ticket", newTicket.getId());
+            account = Database.findAccountByToken(gameToken);
         }
 
-        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
+        if(account == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "请求失败，当前网络环境存在风险", null));
+        }
+
+        Ticket myTicket = Database.findTicketByAccountId(account.getId(), actionType);
+        if(myTicket == null) {
+            myTicket = new Ticket(account.getId(), actionType);
+            myTicket.save();
+        }
+
+        String ticketId = myTicket.getId();
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>() {{
+            put("ticket", ticketId);
+        }}));
     }
 
-                                                                    /**
+    /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/verify">https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/verify</a><br><br>
-     *  Methods: GET, POST<br><br>
+     *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - account id: Account uid<br>
      *      - token: Account session token<br>
      */
     @RequestMapping(value = "verify")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendVerify(@RequestBody VerifyBody body, @RequestHeader(value = "x-rpc-device_id", required = false) String device_id, HttpServletRequest request) {
-        if(body == null || body.getToken() == null || body.getUid() == null || device_id == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter error", null));
+    public ResponseEntity<LinkedHashMap<String, Object>> SendVerify(@RequestBody ShdVerifyBody body, @RequestHeader(value = "x-rpc-device_id") String device_id, HttpServletRequest request) {
+        String accountId = body.getUid();
+        String token = body.getToken();
+
+        if(accountId == null || token == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
         }
 
-        Account account = Database.findAccountByToken(body.getToken());
-        if(account == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "The current network environment is at risk.", null));
+        Account acc = Database.findAccountByToken(token);
+        if(acc == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "请求失败，当前网络环境存在风险", null));
         }
 
-        if(account.getDeviceIds().contains(device_id)) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "Session has expired, pleaes login again.", null));
+        if(acc.getDeviceIds().contains(device_id)) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_FAILED, "请重新登录", null));
         }
 
-        LinkedHashMap<String, Object> data = new LinkedHashMap<>();
-        LinkedHashMap<String, Object> acc = new LinkedHashMap<>();
-
-        acc.put("uid", account.getId());
-        acc.put("name", account.getName());
-        acc.put("email", Utils.maskString(account.getEmail()));
-        acc.put("mobile", Utils.maskString(account.getMobile()));
-        acc.put("is_email_verify", account.getIsEmailVerified() ? '1' : '0');
-        acc.put("realname", Utils.maskString(account.getRealname()));
-        acc.put("identity_card", Utils.maskString(account.getIdentityCard()));
-        acc.put("token", body.getToken());
-        acc.put("facebook_name", Utils.maskString(account.getFacebookName()));
-        acc.put("google_name", Utils.maskString(account.getGoogleName()));
-        acc.put("twitter_name", Utils.maskString(account.getTwitterName()));
-        acc.put("game_center_name", Utils.maskString(account.getGameCenterName()));
-        acc.put("apple_name", Utils.maskString(account.getAppleName()));
-        acc.put("sony_name", Utils.maskString(account.getSonyName()));
-        acc.put("tap_name", Utils.maskString(account.getTapName()));
-        acc.put("country", GeoIP.getCountryCode(request.getRemoteAddr()));
-        acc.put("reactivate_ticket", account.getRequireActivation() ? Database.findTicket(account.getMobile().isEmpty() ? account.getEmail() : account.getMobile(), "Reactivation", !account.getMobile().isEmpty()).getId() : "");
-        acc.put("area_code", Utils.maskString(account.getMobileArea()));
-        acc.put("device_grant_ticket", account.getRequireDeviceGrant() ? Database.findTicket(account.getMobile().isEmpty() ? account.getEmail() : account.getMobile(), "DeviceGrant", !account.getMobile().isEmpty()).getId() : "");
-        acc.put("steam_name", Utils.maskString(account.getSteamName()));
-        acc.put("unmasked_email", "");
-        acc.put("unmasked_email_type", "0");
-        acc.put("safe_mobile", Utils.maskString(account.getSafeMobile()));
-        acc.put("safe_area_code", Utils.maskString(account.getSafeMobileArea()));
-        acc.put("cx_name", Utils.maskString(account.getCxName()));
-
-        data.put("account", acc);
-        data.put("realperson_required", account.getRequireRealPerson());
-        data.put("safe_moblie_required", account.getRequireSafeMobile());
-        data.put("reactivate_required", account.getRequireActivation());
-        data.put("realname_operation", account.getRealPersonOperationName());
-        data.put("device_grant_required", account.getRequireDeviceGrant());
-
-        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
+        Ticket reactivationTicket = Database.findTicketByAccountId(acc.getId(), "reactivation");
+        Ticket deviceGrantTicket = Database.findTicketByAccountId(acc.getId(), "device_grant");
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>() {{
+            put("account", new LinkedHashMap<>() {{
+                put("id", acc.getId());
+                put("name", acc.getName());
+                put("email", Utils.maskString(acc.getEmail()));
+                put("mobile", Utils.maskString(acc.getMobile()));
+                put("is_email_verify", acc.getIsEmailVerified() ? '1' : '0');
+                put("realname", Utils.maskString(acc.getRealname()));
+                put("identity_card", Utils.maskString(acc.getIdentityCard()));
+                put("token", token);
+                put("facebook_name", Utils.maskString(acc.getFacebookName()));
+                put("google_name", Utils.maskString(acc.getGoogleName()));
+                put("twitter_name", Utils.maskString(acc.getTwitterName()));
+                put("game_center_name", Utils.maskString(acc.getGameCenterName()));
+                put("apple_name", Utils.maskString(acc.getAppleName()));
+                put("sony_name", Utils.maskString(acc.getSonyName()));
+                put("tap_name", Utils.maskString(acc.getTapName()));
+                put("country", GeoIP.getCountryCode(request.getRemoteAddr()));
+                put("reactivate_ticket", (reactivationTicket == null) ? "" : reactivationTicket.getId());
+                put("area_code", Utils.maskString(acc.getMobileArea()));
+                put("device_grant_ticket", (deviceGrantTicket == null) ? "" : deviceGrantTicket.getId());
+                put("steam_name", Utils.maskString(acc.getSteamName()));
+                put("unmasked_email", "");
+                put("unmasked_email_type", "0");
+                put("cx_name", Utils.maskString(acc.getCxName()));
+            }});
+            put("realperson_required", acc.getRequireRealPerson());
+            put("safe_moblie_required", acc.getRequireSafeMobile());
+            put("reactivate_required", acc.getRequireActivation());
+            put("device_grant_required", acc.getRequireDeviceGrant());
+            put("realname_operation", acc.getRealPersonOperationName());
+        }}));
     }
 
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/login">https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/login</a><br><br>
-     *  Methods: GET, POST<br><br>
+     *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - account: Username<br>
      *      - is_crypto: Is the password encrypted?<br>
@@ -622,21 +660,18 @@ public class Shield implements org.httpsrv.ResponseHandler {
      *      - game_key: Genshin Impact release version type (hk4e_global/hk4e_cn)<br>
      */
     @RequestMapping(value = "login")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendLogin(@RequestBody LoginBody body, @RequestHeader(value = "x-rpc-game_biz", required = false) String game_biz, @RequestHeader(value = "x-rpc-language", required = false) String lang, @RequestHeader(value = "x-rpc-channel_id", required = false) Integer channel_id, @RequestHeader(value = "x-rpc-risky", required = false) String risky_type, @RequestHeader(value = "x-rpc-device_id", required = false) String device_id, HttpServletRequest request) {
-        if(body == null || body.getAccount() == null || body.getPassword() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "The current network environment is at risk.", null));
+    public ResponseEntity<LinkedHashMap<String, Object>> SendLogin(@RequestBody ShdLoginBody body, @RequestHeader(value = "x-rpc-language") String lang, @RequestHeader(value = "x-rpc-risky") String risky_type, @RequestHeader(value = "x-rpc-device_id") String device_id, HttpServletRequest request) {
+        String account = body.getAccount();
+        String password = body.getPassword();
+        Boolean isEncrypted = body.getIs_crypto();
+        String gameBiz = body.getGame_key();
+
+        if(account == null || password == null || isEncrypted == null || device_id == null || risky_type == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "请求失败，当前网络环境存在风险", null));
         }
 
-        if(game_biz == null || !Utils.checkBizName(game_biz) || lang == null || !Utils.checkGameLanguage(lang)) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "The current network environment is at risk.", null));
-        }
-
-        if(device_id == null || risky_type == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "The current network environment is at risk.", null));
-        }
-
-        if(channel_id == null || channel_id > 1) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "Thirdparty apps are not supported.", null));
+        if((gameBiz != null && !Utils.checkBizName(gameBiz)) || lang == null || !Utils.checkGameLanguage(lang)) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "请求失败，当前网络环境存在风险", null));
         }
 
         try {
@@ -647,125 +682,120 @@ public class Shield implements org.httpsrv.ResponseHandler {
                 }
 
                 if(!Random.compareRiskyId(device_id, risky_type)) {
-                    return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "The current network environment is at risk.", null));
+                    return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "请求失败，当前网络环境存在风险", null));
                 }
             }
         } catch(Exception ignore) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "Internal Server Error", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
         }
-
-        boolean isEncrypted = (body.getIs_crypto() != null) ? body.getIs_crypto() : false;
-        Account account;
-        String username = body.getAccount();
-        String password = body.getPassword();
 
         if(isEncrypted) {
             try {
                 password = RSA.DecryptPassword(password);
             } catch(Exception ignore) {
-                return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "Unable to decrypt the password.", null));
+                return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_FAILED, "系统请求失败，请返回重试", null));
             }
         }
 
         if(password.length() < 15) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "The password format is incorrect. The password format is 8 to 15 characters and is a combination of numbers, uppercase and lowercase letters, and special symbols.", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "密碼格式為8-30位，並且至少包含數字、大小寫字母、英文特殊符號其中兩種", null));
         }
 
-        if(username.contains("@")) {
-            account = Database.findAccountByEmail(username);
-        } else {
-            account = Database.findAccountByMobile(username);
-        }
-
-        if(account == null || !account.checkAuthorizationByPassword(password)) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_INVALID_ACCOUNT, "Account or password is mismatching.", null));
+        Account acc = Database.findAccountByEmail(account);
+        if(acc == null || !acc.checkAuthorizationByPassword(password)) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_INVALID_ACCOUNT, "未找到账户", null));
         }
         else {
             String token = Random.generateStr(30);
-            String ticketId = "";
-            account.setSessionKey(token);
-            account.setCurrentDeviceId(device_id);
-            if(!account.getCurrentIP().equals(request.getRemoteAddr()) && !account.getDeviceIds().contains(device_id)) {
-                if(Database.findTicket(account.getMobile().isEmpty() ? account.getEmail() : account.getMobile(), "DeviceGrant", !account.getMobile().isEmpty()) == null) {
-                    Ticket newTicket = new Ticket(account.getMobile().isEmpty() ? account.getEmail() : account.getMobile(), "DeviceGrant", "System", "", !account.getMobile().isEmpty());
-                    newTicket.save();
-                    ticketId = newTicket.getId();
-                    account.setRequireDeviceGrant(true);
+            acc.setSessionKey(token);
+            acc.setCurrentDeviceId(device_id);
+
+            Ticket _deviceGrantTicket = Database.findTicketByAccountId(acc.getId(), "device_grant");
+            if(!acc.getCurrentIP().equals(request.getRemoteAddr()) && !acc.getDeviceIds().contains(device_id)) {
+                if(_deviceGrantTicket == null) {
+                    _deviceGrantTicket = new Ticket(acc.getId(), "device_grant");
+                    _deviceGrantTicket.save();
                 }
-            } else if(!account.getDeviceIds().contains(device_id)) {
-                account.getDeviceIds().add(device_id);
+            } else if(!acc.getDeviceIds().contains(device_id)) {
+                acc.getDeviceIds().add(device_id);
             }
 
-            account.save();
+            if(acc.getRealname().isEmpty()) {
+                acc.setRequireRealPerson(true);
+                acc.setRealPersonOperationName("bindRealname");
+            }
 
-            LinkedHashMap<String, Object> data = new LinkedHashMap<>();
-            LinkedHashMap<String, Object> acc = new LinkedHashMap<>();
-
-            acc.put("uid", account.getId());
-            acc.put("name", account.getName());
-            acc.put("email", Utils.maskString(account.getEmail()));
-            acc.put("mobile", Utils.maskString(account.getMobile()));
-            acc.put("is_email_verify", account.getIsEmailVerified() ? '1' : '0');
-            acc.put("realname", Utils.maskString(account.getRealname()));
-            acc.put("identity_card", Utils.maskString(account.getIdentityCard()));
-            acc.put("token", token);
-            acc.put("facebook_name", Utils.maskString(account.getFacebookName()));
-            acc.put("google_name", Utils.maskString(account.getGoogleName()));
-            acc.put("twitter_name", Utils.maskString(account.getTwitterName()));
-            acc.put("game_center_name", Utils.maskString(account.getGameCenterName()));
-            acc.put("apple_name", Utils.maskString(account.getAppleName()));
-            acc.put("sony_name", Utils.maskString(account.getSonyName()));
-            acc.put("tap_name", Utils.maskString(account.getTapName()));
-            acc.put("country", GeoIP.getCountryCode(request.getRemoteAddr()));
-            acc.put("reactivate_ticket", account.getRequireActivation() ? Database.findTicket(account.getMobile().isEmpty() ? account.getEmail() : account.getMobile(), "Reactivation", !account.getMobile().isEmpty()).getId() : "");
-            acc.put("area_code", Utils.maskString(account.getMobileArea()));
-            acc.put("device_grant_ticket", ticketId.isEmpty() ? account.getRequireDeviceGrant() ? Database.findTicket(account.getMobile().isEmpty() ? account.getEmail() : account.getMobile(), "DeviceGrant", !account.getMobile().isEmpty()).getId() : "" : ticketId);
-            acc.put("steam_name", Utils.maskString(account.getSteamName()));
-            acc.put("unmasked_email", "");
-            acc.put("unmasked_email_type", "0");
-            acc.put("safe_mobile", Utils.maskString(account.getSafeMobile()));
-            acc.put("safe_area_code", Utils.maskString(account.getSafeMobileArea()));
-            acc.put("cx_name", Utils.maskString(account.getCxName()));
-
-            data.put("account", acc);
-            data.put("realperson_required", account.getRequireRealPerson());
-            data.put("safe_moblie_required", account.getRequireSafeMobile());
-            data.put("reactivate_required", account.getRequireActivation());
-            data.put("device_grant_required", account.getRequireDeviceGrant());
-            data.put("realname_operation", account.getRealPersonOperationName());
-
-            return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
+            acc.save();
+            Ticket reactivationTicket = Database.findTicketByAccountId(acc.getId(), "reactivation");
+            Ticket deviceGrantTicket = _deviceGrantTicket;
+            return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>() {{
+                put("account", new LinkedHashMap<>() {{
+                    put("id", acc.getId());
+                    put("name", acc.getName());
+                    put("email", Utils.maskString(acc.getEmail()));
+                    put("mobile", Utils.maskString(acc.getMobile()));
+                    put("is_email_verify", acc.getIsEmailVerified() ? '1' : '0');
+                    put("realname", Utils.maskString(acc.getRealname()));
+                    put("identity_card", Utils.maskString(acc.getIdentityCard()));
+                    put("token", token);
+                    put("facebook_name", Utils.maskString(acc.getFacebookName()));
+                    put("google_name", Utils.maskString(acc.getGoogleName()));
+                    put("twitter_name", Utils.maskString(acc.getTwitterName()));
+                    put("game_center_name", Utils.maskString(acc.getGameCenterName()));
+                    put("apple_name", Utils.maskString(acc.getAppleName()));
+                    put("sony_name", Utils.maskString(acc.getSonyName()));
+                    put("tap_name", Utils.maskString(acc.getTapName()));
+                    put("country", GeoIP.getCountryCode(request.getRemoteAddr()));
+                    put("reactivate_ticket", (reactivationTicket == null) ? "" : reactivationTicket.getId());
+                    put("area_code", Utils.maskString(acc.getMobileArea()));
+                    put("device_grant_ticket", (deviceGrantTicket == null) ? "" : deviceGrantTicket.getId());
+                    put("steam_name", Utils.maskString(acc.getSteamName()));
+                    put("unmasked_email", "");
+                    put("unmasked_email_type", "0");
+                    put("cx_name", Utils.maskString(acc.getCxName()));
+                }});
+                put("realperson_required", acc.getRequireRealPerson());
+                put("safe_moblie_required", acc.getRequireSafeMobile());
+                put("reactivate_required", acc.getRequireActivation());
+                put("device_grant_required", acc.getRequireDeviceGrant());
+                put("realname_operation", acc.getRealPersonOperationName());
+            }}));
         }
     }
 
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/loadFirebaseBlackList">https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/loadFirebaseBlackList</a><br><br>
-     *  Methods: GET, POST<br><br>
+     *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - game_key: Genshin Impact release version type (hk4e_global/hk4e_cn)<br>
      *      - client: Platform<br>
      */
     @RequestMapping(value = "loadFirebaseBlackList")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendFireBaseBlackList(Integer client, String game_key) {
+    public ResponseEntity<LinkedHashMap<String, Object>> SendFireBaseBlackList(Integer client, String game_key) throws JsonProcessingException {
         if(game_key == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter error", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
         }
 
         if(client == null || client < 1 || client > 3 || !Utils.checkBizName(game_key)) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_MISSING_CONFIGURATION, "Missing configuration", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_MISSING_CONFIGURATION, "参数错误", null));
         }
 
         LinkedHashMap<String, Object> data = new LinkedHashMap<>();
         data.put("device_blacklist_version", Config.getHttpConfig().fireBaseBlacklistVersion);
         data.put("device_blacklist_switch", Config.getHttpConfig().enableFireBaseBlacklistDevicesSwitch);
-        data.put("device_blacklist", "{\"min_api\":28,\"device\":[]}");
+        data.put("device_blacklist", Jackson.toJsonString(new LinkedHashMap<>() {{
+            put("min_api", 28);
+            put("device", Jackson.toJsonString(Database.findAllBlacklistedDevices()));
+        }}));
 
         return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
     }
 
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/loadConfig">https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/loadConfig</a><br><br>
-     *  Methods: GET, POST<br><br>
+     *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - game_key: Genshin Impact release version type (hk4e_global/hk4e_cn)<br>
      *      - client: Platform<br>
@@ -773,17 +803,17 @@ public class Shield implements org.httpsrv.ResponseHandler {
     @RequestMapping(value = "loadConfig")
     public ResponseEntity<LinkedHashMap<String, Object>> SendConfig(Integer client, String game_key) {
         if(game_key == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter error", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
         }
 
         if(client == null || client < 1 || client > 13 || !Utils.checkBizName(game_key)) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_MISSING_CONFIGURATION, "Missing configuration", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_MISSING_CONFIGURATION, "参数错误", null));
         }
 
         LinkedHashMap<String, Object> data = new LinkedHashMap<>();
         data.put("id", Utils.getConfigId(client));
         data.put("game_key", game_key);
-        data.put("app_id", ApplicationId.GENSHIN_RELEASE);
+        data.put("app_id", ApplicationId.GENSHIN_RELEASE.getValue());
         data.put("client", Utils.getPlatformNameById(client));
         data.put("identity", "I_IDENTITY");
         data.put("guest", Config.getHttpConfig().enableGuestLogin);
@@ -835,3 +865,4 @@ public class Shield implements org.httpsrv.ResponseHandler {
 /// TODO Implement: https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/loginByThirdparty
 /// TODO Implement: https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/createMmt
 /// TODO Implement: https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/checkAccount
+/// TODO Implement: https://hk4e-sdk-os.hoyoverse.com/hk4e_global/mdk/shield/api/bindEmail

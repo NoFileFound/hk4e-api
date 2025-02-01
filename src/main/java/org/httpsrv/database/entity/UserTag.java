@@ -16,10 +16,10 @@ public class UserTag {
     @Setter private Long lastUpdateTs;
 
     public void save() {
-        Database.saveAccountAsync(this);
+        Database.saveObjectAsync(this);
     }
 
     public void delete() {
-        Database.deleteAccountAsync(this);
+        Database.deleteObjectAsync(this);
     }
 }

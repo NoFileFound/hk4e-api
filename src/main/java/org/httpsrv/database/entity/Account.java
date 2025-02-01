@@ -12,45 +12,46 @@ import java.util.List;
 /**
  * Collection: accounts
  */
+@Getter
 @Entity(value = "accounts", useDiscriminator = false)
 public class Account {
-    @Getter @Id private String id;
-    @Getter private Integer accountType;
-    @Getter private String name;
-    @Getter @Setter private String realname;
-    @Getter private String password; /// sha256
-    @Getter @Setter private String email;
-    @Getter @Setter private String mobile;
-    @Getter @Setter private String mobileArea;
-    @Getter @Setter private String safeMobile;
-    @Getter @Setter private String safeMobileArea;
-    @Getter @Setter private String identityCard;
-    @Getter @Setter private String currentIP;
-    @Getter @Setter private String currentDeviceId;
-    @Getter private FatigueRemind fatigueRemind;
+    @Id private String id;
+    private Integer accountType;
+    private String name;
+    @Setter private String realname;
+    private String password; /// sha256
+    @Setter private String email;
+    @Setter private String mobile;
+    @Setter private String mobileArea;
+    @Setter private String safeMobile;
+    @Setter private String safeMobileArea;
+    @Setter private String identityCard;
+    @Setter private String currentIP;
+    @Setter private String currentDeviceId;
+    private FatigueRemind fatigueRemind;
+    private Goods goods;
 
     // Third parties
-    @Getter private String facebookName;
-    @Getter private String googleName;
-    @Getter private String twitterName;
-    @Getter private String gameCenterName;
-    @Getter private String appleName;
-    @Getter private String sonyName;
-    @Getter private String tapName;
-    @Getter private String steamName;
-    @Getter private String cxName;
+    private String facebookName;
+    private String googleName;
+    private String twitterName;
+    private String gameCenterName;
+    private String appleName;
+    private String sonyName;
+    private String tapName;
+    private String steamName;
+    private String cxName;
 
-    @Getter @Setter private Boolean isEmailVerified;
-    @Getter @Setter private Boolean requireDeviceGrant;
-    @Getter @Setter private Boolean requireSafeMobile;
-    @Getter @Setter private Boolean requireRealPerson;
-    @Getter @Setter private String realPersonOperationName;
-    @Getter @Setter private Boolean requireActivation;
+    @Setter private Boolean isEmailVerified;
+    @Setter private Boolean requireDeviceGrant;
+    @Setter private Boolean requireSafeMobile;
+    @Setter private Boolean requireRealPerson;
+    @Setter private String realPersonOperationName;
+    @Setter private Boolean requireActivation;
 
-    @Getter @Setter private String sessionKey;
-    @Getter private String stokenKey;
-    @Getter private String ltokenKey;
-    @Getter private List<String> deviceIds;
+    @Setter private String sessionKey;
+    private String stokenKey;
+    private List<String> deviceIds;
 
     public Account() {
         this.id = String.valueOf(Database.getNextId("accounts"));
@@ -74,15 +75,37 @@ public class Account {
     }
 
     public void save() {
-        Database.saveAccountAsync(this);
+        Database.saveObjectAsync(this);
     }
 
-    public void delete() {Database.deleteAccountAsync(this);}
+    public void delete() {Database.deleteObjectAsync(this);}
 
     @Embedded
     public static class FatigueRemind {
         private String nickname;
         private Integer reset_point;
         private List<Integer> durations;
+    }
+
+    @Embedded
+    public static class Goods {
+        @Id private String goods_id;
+        private String goods_name;
+        private String goods_name_i18n_key;
+        private String goods_desc;
+        private String goods_desc_i18n_key;
+        private String goods_type; /// Normal, MonthlyCard
+        private String goods_unit;
+        private String goods_icon;
+        private String currency;
+        private String price;
+        private String symbol;
+        private String tier_id;
+        private Object bonus_desc;
+        private Object once_bonus_desc;
+        private boolean available;
+        private String tips_desc;
+        private String tips_i18n_key;
+        private String battle_pass_limit;
     }
 }

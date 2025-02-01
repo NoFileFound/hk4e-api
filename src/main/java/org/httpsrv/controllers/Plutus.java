@@ -22,6 +22,7 @@ public class Plutus implements org.httpsrv.ResponseHandler {
     /**
      *  Source: <a href="https://api-payment.mihoyo.com/plutus/api/v2/listPayPlat">https://api-payment.mihoyo.com/plutus/api/v2/listPayPlat</a><br><br>
      *  Method: GET<br>
+     *  Content-Type: application/json<br>
      */
     @GetMapping(value = "listPayPlat")
     public ResponseEntity<LinkedHashMap<String, Object>> SendListPayPlatforms() {
@@ -33,6 +34,7 @@ public class Plutus implements org.httpsrv.ResponseHandler {
     /**
      *  Source: <a href="https://api-payment.mihoyo.com/plutus/api/v2/timeNow">https://api-payment.mihoyo.com/plutus/api/v2/timeNow</a><br><br>
      *  Method: GET<br>
+     *  Content-Type: application/json<br>
      */
     @GetMapping(value = "timeNow")
     public ResponseEntity<LinkedHashMap<String, Object>> SendPlutusTimeMillis() {

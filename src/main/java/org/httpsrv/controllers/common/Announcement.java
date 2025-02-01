@@ -22,7 +22,8 @@ public class Announcement implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://hk4e-ann-api.mihoyo.com/common/hk4e_cn/announcement/api/getAnnList">https://hk4e-ann-api.mihoyo.com/common/hk4e_cn/announcement/api/getAnnList</a><br><br>
-     *  Method: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - game: Game name<br>
      *      - game_biz: Genshin Impact release version type (hk4e_global/hk4e_cn)<br>
@@ -62,7 +63,8 @@ public class Announcement implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://hk4e-ann-api.mihoyo.com/common/hk4e_cn/announcement/api/getAlertAnn">https://hk4e-ann-api.mihoyo.com/common/hk4e_cn/announcement/api/getAlertAnn</a><br><br>
-     *  Method: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - game: Game name<br>
      *      - game_biz: Genshin Impact release version type (hk4e_global/hk4e_cn)<br>
@@ -88,7 +90,8 @@ public class Announcement implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://hk4e-ann-api.mihoyo.com/common/hk4e_cn/announcement/api/getAlertPic">https://hk4e-ann-api.mihoyo.com/common/hk4e_cn/announcement/api/getAlertPic</a><br><br>
-     *  Method: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - game: Game name<br>
      *      - game_biz: Genshin Impact release version type (hk4e_global/hk4e_cn)<br>
@@ -110,7 +113,8 @@ public class Announcement implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://hk4e-ann-api.mihoyo.com/common/hk4e_cn/announcement/api/getAnnContent">https://hk4e-ann-api.mihoyo.com/common/hk4e_cn/announcement/api/getAnnContent</a><br><br>
-     *  Method: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - game: Game name<br>
      *      - game_biz: Genshin Impact release version type (hk4e_global/hk4e_cn)<br>

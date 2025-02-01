@@ -19,7 +19,8 @@ public class Perf implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://log-upload-os.hoyoverse.com/perf/config/verify">https://log-upload-os.hoyoverse.com/perf/config/verify</a><br><br>
-     *  Method: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - device_id: Device id<br>
      *      - platform: Platform<br>

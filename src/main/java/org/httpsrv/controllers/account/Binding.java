@@ -3,13 +3,13 @@ package org.httpsrv.controllers.account;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import org.httpsrv.algorithms.BASE64;
-import org.httpsrv.algorithms.HEX;
 import org.httpsrv.conf.Config;
 import org.httpsrv.data.Retcode;
+import org.httpsrv.data.body.account.BndGenAuthKeyBody;
+import org.httpsrv.data.body.account.BndGetUserGameRolesByCookieTokenBody;
 import org.httpsrv.database.Database;
 import org.httpsrv.database.entity.Account;
-import org.httpsrv.database.entity.Player;
+import org.httpsrv.database.entity.WebProfile;
 import org.httpsrv.utils.Utils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,31 +28,50 @@ public class Binding implements org.httpsrv.ResponseHandler {
     }
 
     /**
-     *  Source: <a href="https://api-account-os.hoyoverse.com/account/binding/api/getUserGameRolesOfRegionByCookieToken">https://api-account-os.hoyoverse.com/account/binding/api/getUserGameRolesOfRegionByCookieToken</a><br><br>
-     *  Method: POST<br><br>
+     *  Source: <a href="https://api-account-os.hoyoverse.com/account/binding/api/getRegionByISO">https://api-account-os.hoyoverse.com/account/binding/api/getRegionByISO</a><br><br>
+     *  Method: POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
-     *      - t: Timestamp<br>
-     *      - game_biz: Genshin Impact release version type (hk4e_global/hk4e_cn)<br>
-     *      - region: Game region<br>
+     *      - game_biz: Game region id.<br>
+     *      - iso: ISO code.<br>
      */
-    @GetMapping(value = {"getUserGameRolesOfRegionByCookieToken", "getUserGameRolesByCookieToken"})
-    public ResponseEntity<LinkedHashMap<String, Object>> SendUserGameRolesOfRegionByCookieToken(@RequestBody String game_biz, @CookieValue(value = "cookie_token_v2") String cookieToken) {
-        Account account = Database.findAccountByToken(HEX.bytesToHex(BASE64.decode(cookieToken)));
-        if(account == null || !Utils.checkBizName(game_biz)) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_BBS_NOT_LOGIN, "Login expired. Please log in again.", null));
+    @GetMapping(value = "getRegionByISO")
+    public ResponseEntity<LinkedHashMap<String, Object>> getRegionByISO(String game_biz, String iso) {
+        if(game_biz == null || !Utils.checkBizName(game_biz) || iso == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_WEBAPI_PARAMETER_ERROR, "参数错误", null));
         }
 
-        Player player = Database.findPlayerByAccountId(account.getId());
+        return ResponseEntity.ok(this.makeResponse(Retcode.RET_WEBAPI_REGION_NOT_FOUND, "未找到对应区服", null));
+    }
+
+    /**
+     *  Source: <a href="https://api-account-os.hoyoverse.com/account/binding/api/getUserGameRolesOfRegionByCookieToken">https://api-account-os.hoyoverse.com/account/binding/api/getUserGameRolesOfRegionByCookieToken</a><br><br>
+     *  Method: POST<br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
+     *      - t: Current timestamp.<br>
+     *      - game_biz: Game region id.<br>
+     *      - region: Game region.<br>
+     */
+    @GetMapping(value = {"getUserGameRolesOfRegionByCookieToken", "getUserGameRolesByCookieToken"})
+    public ResponseEntity<LinkedHashMap<String, Object>> SendUserGameRolesOfRegionByCookieToken(@RequestBody BndGetUserGameRolesByCookieTokenBody body, @CookieValue(value = "cookie_token_v2") String cookieToken) {
+        String game_biz = body.getGame_biz();
+
+        WebProfile account = Database.findWebProfileByCookie(cookieToken);
+        if(account == null || !Utils.checkBizName(game_biz)) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_BBS_NOT_LOGIN, "登录状态失效，请重新登录", null));
+        }
+
         LinkedHashMap<String, Object> data = new LinkedHashMap<>();
         data.put("list", new ArrayList<>(List.of(
                 new LinkedHashMap<>() {{
                     put("game_biz", game_biz);
-                    put("region", player.getRegionId());
-                    put("game_uid", player.getId());
-                    put("nickname", player.getPlayerName());
-                    put("level", player.getLevel());
-                    put("is_chosen", true);
-                    put("region_name", player.getRegionName());
+                    put("region", "os_jp69");
+                    put("game_uid", account.getId());
+                    put("nickname", account.getGameNickname());
+                    put("level", account.getGameLevel());
+                    put("is_chosen", false);
+                    put("region_name", "Localhost");
                     put("is_official", true);
                 }}
         )));
@@ -61,49 +80,43 @@ public class Binding implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://api-account-os.hoyoverse.com/account/binding/api/genAuthKey">https://api-account-os.hoyoverse.com/account/binding/api/genAuthKey</a><br><br>
-     *  Method: POST<br><br>
+     *  Method: POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
-     *      - game_biz: Genshin Impact release version type (hk4e_global/hk4e_cn)<br>
-     *      - stoken (cookies): Stoken<br>
+     *      - game_biz: Game region id.<br>
+     *      - stoken: Stoken.<br>
      */
     @PostMapping(value = "genAuthKey")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendAuthKey(@RequestBody String game_biz, @CookieValue(value = "stoken") String stoken) {
+    public ResponseEntity<LinkedHashMap<String, Object>> SendAuthKey(@RequestBody BndGenAuthKeyBody body, @CookieValue(value = "stoken") String stoken) {
+        String game_biz = body.getGame_biz();
+
         Account account = Database.findAccountByStoken(stoken);
         if(account == null || !Utils.checkBizName(game_biz)) {
             return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_FAILED, "登录失效，请重新登录", null));
         }
 
-        LinkedHashMap<String, Object> data = new LinkedHashMap<>();
-        data.put("sign_type", 2);
-        data.put("authkey_ver", 1);
-        data.put("auth_key", BASE64.encode(account.getSessionKey().getBytes()));
-        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>() {{
+            put("sign_type", 2);
+            put("authkey_ver", 1);
+            put("auth_key", account.getSessionKey().getBytes());
+        }}));
     }
 
     /**
      *  Source: <a href="https://api-account-os.hoyolab.com/account/binding/api/getAllRegions">https://api-account-os.hoyolab.com/account/binding/api/getAllRegions</a><br><br>
-     *  Method: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
-     *      - game_biz: Genshin Impact release version type (hk4e_global/hk4e_cn)<br>
+     *      - game_biz: Game region id.<br>
      */
-    @GetMapping("getAllRegions")
+    @GetMapping(value = "getAllRegions")
     public ResponseEntity<LinkedHashMap<String, Object>> SendAllRegions(String game_biz) {
         if(game_biz == null || !Utils.checkBizName(game_biz)) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_WEBAPI_PARAMETER_ERROR, "Parameter error", null));
-        }
-
-        List<LinkedHashMap<String, String>> region_list = new ArrayList<>();
-        for(var region : Config.getRegionVar().regions) {
-            region_list.add(new LinkedHashMap<>() {{
-                put("name", region.Title);
-                put("region", region.Name);
-            }});
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_WEBAPI_PARAMETER_ERROR, "参数错误", null));
         }
 
         return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<String, Object>() {{
-            put("list", region_list);
+            put("list", Config.getRegionVar().regions.stream().map(region -> new LinkedHashMap<String, String>() {{ put("name", region.Title); put("region", region.Name); }}).toList());
         }}));
     }
 }
-
-/// TODO Implement: https://api-account-os.hoyoverse.com/account/binding/api/getRegionByISO

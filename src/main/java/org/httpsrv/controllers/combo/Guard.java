@@ -21,6 +21,7 @@ public class Guard implements org.httpsrv.ResponseHandler {
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/combo/guard/api/ping">https://hk4e-sdk-os.hoyoverse.com/combo/guard/api/ping</a><br><br>
      *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br>
      */
     @RequestMapping(value = "ping")
     public ResponseEntity<LinkedHashMap<String, Object>> SendPing() {
@@ -36,6 +37,7 @@ public class Guard implements org.httpsrv.ResponseHandler {
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/combo/guard/api/ping2">https://hk4e-sdk-os.hoyoverse.com/combo/guard/api/ping2</a><br><br>
      *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br>
      */
     @RequestMapping(value = "ping2")
     public ResponseEntity<LinkedHashMap<String, Object>> SendPing2() {

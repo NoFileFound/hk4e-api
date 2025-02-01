@@ -26,7 +26,8 @@ public class Box implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sdk-os-static.hoyoverse.com/combo/box/api/config/plat-launcher/plat-launcher">https://sdk-os-static.hoyoverse.com/combo/box/api/config/plat-launcher/plat-launcher</a><br><br>
-     *  Method: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - launcher: Launcher id<br>
      */
@@ -50,7 +51,8 @@ public class Box implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sdk-static.mihoyo.com/combo/box/api/config/porte-cn/porte">https://sdk-static.mihoyo.com/combo/box/api/config/porte-cn/porte</a><br><br>
-     *  Method: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - app_id: Application id<br>
      *      - client_type: Platform<br>
@@ -67,7 +69,8 @@ public class Box implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sdk-static.mihoyo.com/combo/box/api/config/porte-fe-cn/config">https://sdk-static.mihoyo.com/combo/box/api/config/porte-fe-cn/config</a><br><br>
-     *  Method: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - config: Config id<br>
      */
@@ -94,7 +97,8 @@ public class Box implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sdk-os-static.hoyoverse.com/combo/box/api/config/sdk/drmSwitch">https://sdk-os-static.hoyoverse.com/combo/box/api/config/sdk/drmSwitch</a><br><br>
-     *  Method: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - biz_game: Genshin Impact release version type (hk4e_global/hk4e_cn)<br>
      *      - client_type: Platform<br>
@@ -121,7 +125,8 @@ public class Box implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sdk-os-static.hoyoverse.com/combo/box/api/config/porte-os/kibana_box">https://sdk-os-static.hoyoverse.com/combo/box/api/config/porte-os/kibana_box</a><br><br>
-     *  Method: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - appId: Application id<br>
      *      - platform: Platform<br>
@@ -150,7 +155,8 @@ public class Box implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sdk-os-static.hoyoverse.com/combo/box/api/config/sdk/combo">https://sdk-os-static.hoyoverse.com/combo/box/api/config/sdk/combo</a><br><br>
-     *  Method: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - biz_game: Genshin Impact release version type (hk4e_global/hk4e_cn)<br>
      *      - client_type: Platform<br>
@@ -240,7 +246,8 @@ public class Box implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sdk-os-static.hoyoverse.com/combo/box/api/config/sw/precache">https://sdk-os-static.hoyoverse.com/combo/box/api/config/sw/precache</a><br><br>
-     *  Platform: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - biz: Genshin Impact release version type (hk4e_global/hk4e_cn)<br>
      *      - client: Platform<br>
@@ -255,12 +262,11 @@ public class Box implements org.httpsrv.ResponseHandler {
             return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_COMBO_PLATFORM_NO_CONFIG, "RetCode_NoConfig", null));
         }
 
-        LinkedHashMap<String, String> vals = new LinkedHashMap<>();
-        vals.put("enable", String.valueOf(Config.getHttpConfig().enableServiceWorker));
-        vals.put("url", Config.getHttpConfig().serviceWorkerUrl);
-
         return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<String, Object>() {{
-            put("data", vals);
+            put("data", new LinkedHashMap<>() {{
+                put("enable", String.valueOf(Config.getHttpConfig().enableServiceWorker));
+                put("url", Config.getHttpConfig().serviceWorkerUrl);
+            }});
         }}));
     }
 }

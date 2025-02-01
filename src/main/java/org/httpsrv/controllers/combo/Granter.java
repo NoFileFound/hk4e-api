@@ -5,7 +5,7 @@ import java.util.*;
 import org.httpsrv.conf.Config;
 import org.httpsrv.data.ApplicationId;
 import org.httpsrv.data.Retcode;
-import org.httpsrv.data.body.CompareProtocolVersionBody;
+import org.httpsrv.data.body.combo.CbmCompareProtocolVersionBody;
 import org.httpsrv.thirdparty.GeoIP;
 import org.httpsrv.utils.Utils;
 import org.springframework.http.ResponseEntity;
@@ -26,8 +26,9 @@ public class Granter implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/hk4e_global/combo/granter/api/getDynamicClientConfig">https://hk4e-sdk-os.hoyoverse.com/hk4e_global/combo/granter/api/getDynamicClientConfig</a><br><br>
-     *  Method: GET<br><br>
-     *  Parameters: (Dynamically)<br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters (Dynamically):<br>
      *      - check_consent_banner: check_consent_banner<br>
      */
     @GetMapping(value = "getDynamicClientConfig")
@@ -43,7 +44,8 @@ public class Granter implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/combo/granter/api/compareProtocolVersion">https://hk4e-sdk-os.hoyoverse.com/combo/granter/api/compareProtocolVersion</a><br><br>
-     *  Method: POST<br><br>
+     *  Method: POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - app_id: Application id<br>
      *      - channel_id: Channel id<br>
@@ -52,15 +54,15 @@ public class Granter implements org.httpsrv.ResponseHandler {
      *      - minimum:  Minimum<br>
      */
     @PostMapping(value = {"compareProtocolVersion", "getProtocol"})
-    public ResponseEntity<LinkedHashMap<String, Object>> SendCompareProtocolVersion(@RequestBody CompareProtocolVersionBody bodyData) {
+    public ResponseEntity<LinkedHashMap<String, Object>> SendCompareProtocolVersion(@RequestBody CbmCompareProtocolVersionBody bodyData) {
         if(bodyData == null || bodyData.getLanguage() == null || !Utils.checkGameLanguage(bodyData.getLanguage())) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PROTOCOL_FAILED, "Protocol loading error", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PROTOCOL_FAILED, "协议加载失败", null));
         }
 
         if(bodyData.getApp_id() != ApplicationId.GENSHIN_RELEASE.getValue() &&
                 bodyData.getApp_id() != ApplicationId.GENSHIN_SANDBOX_OVERSEAS.getValue() &&
                 bodyData.getApp_id() != ApplicationId.GENSHIN_SANDBOX_CHINA.getValue()) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PROTOCOL_FAILED, "Protocol loading error", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PROTOCOL_FAILED, "协议加载失败", null));
         }
 
         LinkedHashMap<String, Object> data = new LinkedHashMap<>();
@@ -90,7 +92,8 @@ public class Granter implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://hk4e-sdk-s.mihoyo.com/hk4e_cn/combo/granter/api/compareProtocolVersion">https://hk4e-sdk-s.mihoyo.com/hk4e_cn/combo/granter/api/compareProtocolVersion</a><br><br>
-     *  Method: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - app_id: Application id<br>
      *      - channel_id: Channel id<br>
@@ -102,13 +105,13 @@ public class Granter implements org.httpsrv.ResponseHandler {
     @GetMapping(value = {"compareProtocolVersion", "getProtocol"})
     public ResponseEntity<LinkedHashMap<String, Object>> SendCompareProtocolVersion(Integer app_id, String language, Integer major, Integer minimum, Integer channel_id) {
         if(app_id == null || language == null || !Utils.checkGameLanguage(language) || major == null || minimum == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PROTOCOL_FAILED, "Protocol loading error", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PROTOCOL_FAILED, "协议加载失败", null));
         }
 
         if(app_id != ApplicationId.GENSHIN_RELEASE.getValue() &&
                 app_id != ApplicationId.GENSHIN_SANDBOX_OVERSEAS.getValue() &&
                 app_id != ApplicationId.GENSHIN_SANDBOX_CHINA.getValue()) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PROTOCOL_FAILED, "Protocol loading error", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PROTOCOL_FAILED, "协议加载失败", null));
         }
 
         LinkedHashMap<String, Object> data = new LinkedHashMap<>();
@@ -132,7 +135,8 @@ public class Granter implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/combo/granter/api/getConfig">https://hk4e-sdk-os.hoyoverse.com/combo/granter/api/getConfig</a><br><br>
-     *  Methods: GET, POST<br><br>
+     *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - app_id: Application id<br>
      *      - channel_id: Channel id<br>
@@ -141,13 +145,13 @@ public class Granter implements org.httpsrv.ResponseHandler {
     @RequestMapping(value = "getConfig", method = {RequestMethod.GET, RequestMethod.POST})
     public ResponseEntity<LinkedHashMap<String, Object>> SendConfig(Integer app_id, Integer channel_id, Integer client_type) {
         if(app_id == null || channel_id == null || client_type == null || client_type < 1 || client_type > 13) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "System error", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "系统错误", null));
         }
 
         if(app_id != ApplicationId.GENSHIN_RELEASE.getValue() &&
                 app_id != ApplicationId.GENSHIN_SANDBOX_OVERSEAS.getValue() &&
                 app_id != ApplicationId.GENSHIN_SANDBOX_CHINA.getValue()) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "System error", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "系统错误", null));
         }
 
         LinkedHashMap<String, Object> data = new LinkedHashMap<>();
@@ -197,14 +201,15 @@ public class Granter implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/combo/granter/api/getFont">https://hk4e-sdk-os.hoyoverse.com/combo/granter/api/getFont</a><br><br>
-     *  Methods: GET, POST<br><br>
+     *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - app_id: Application id<br>
      */
     @RequestMapping(value = "getFont", method = {RequestMethod.GET, RequestMethod.POST})
     public ResponseEntity<LinkedHashMap<String, Object>> SendFont(Integer app_id) {
         if(app_id == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "Invalid AppID", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "无效AppId", null));
         }
 
         var data = new LinkedHashMap<>();

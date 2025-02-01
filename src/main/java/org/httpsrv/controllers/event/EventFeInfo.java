@@ -22,7 +22,8 @@ public class EventFeInfo implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sg-public-api.hoyoverse.com/event/event_fe_info/getTime">https://sg-public-api.hoyoverse.com/event/event_fe_info/getTime</a><br><br>
-     *  Method: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - game_biz: Genshin Impact release version type (hk4e_global/hk4e_cn)<br>
      *      - lang: Language<br>
@@ -37,7 +38,8 @@ public class EventFeInfo implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sg-public-api.hoyoverse.com/event/event_fe_info/ip_location">https://sg-public-api.hoyoverse.com/event/event_fe_info/ip_location</a><br><br>
-     *  Method: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - fe_type: Is official<br>
      *      - ip_location_type: chinese or overseas<br>

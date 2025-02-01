@@ -25,7 +25,8 @@ public class Sophon implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sg-downloader-api.hoyoverse.com/downloader/sophon_chunk/api/getPatchBuild">https://sg-downloader-api.hoyoverse.com/downloader/sophon_chunk/api/getPatchBuild</a><br><br>
-     *  Method: POST<br><br>
+     *  Method: POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - branch: game branch<br>
      *      - package_id: game package id<br>
@@ -47,7 +48,8 @@ public class Sophon implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="http://sg-public-api.hoyoverse.com/downloader/sophon/api/getABTest">http://sg-public-api.hoyoverse.com/downloader/sophon/api/getABTest</a><br><br>
-     *  Method: POST<br><br>
+     *  Method: POST<br>
+     *  Content-Type: application/json<br>
      */
     @PostMapping(value = "getABTest")
     public ResponseEntity<LinkedHashMap<String, Object>> SendABTest() {
@@ -61,7 +63,8 @@ public class Sophon implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sg-public-api.hoyoverse.com/downloader/sophon_chunk/api/getBuild">https://sg-public-api.hoyoverse.com/downloader/sophon_chunk/api/getBuild</a><br><br>
-     *  Method: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - branch: game branch<br>
      *      - package_id: game package id<br>
@@ -83,7 +86,8 @@ public class Sophon implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sg-public-api-static.hoyoverse.com/downloader/sophon/api/getParamsConfig">https://sg-public-api-static.hoyoverse.com/downloader/sophon/api/getParamsConfig</a><br><br>
-     *  Method: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - client_type: Platform<br>
      *      - plat_app: platform launcher name<br>

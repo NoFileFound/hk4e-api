@@ -3,12 +3,11 @@ package org.httpsrv.controllers.combo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.LinkedHashMap;
-import lombok.Getter;
 import org.httpsrv.algorithms.HMAC;
 import org.httpsrv.conf.Config;
 import org.httpsrv.data.ApplicationId;
 import org.httpsrv.data.Retcode;
-import org.httpsrv.data.body.LoginV2Body;
+import org.httpsrv.data.body.granter.GntLoginV2Body;
 import org.httpsrv.database.Database;
 import org.httpsrv.database.entity.Account;
 import org.httpsrv.thirdparty.GeoIP;
@@ -32,7 +31,8 @@ public class GranterLogin implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/hk4e_global/combo/granter/login/v2/login">https://hk4e-sdk-os.hoyoverse.com/hk4e_global/combo/granter/login/v2/login</a><br><br>
-     *  Methods: GET, POST<br><br>
+     *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - app_id: Application id<br>
      *      - channel: Channel id<br>
@@ -44,48 +44,49 @@ public class GranterLogin implements org.httpsrv.ResponseHandler {
     *          - sign: Signature<br>
      */
     @RequestMapping(value = {"login", "v2/login"})
-    public ResponseEntity<LinkedHashMap<String, Object>> SendLoginV2(@RequestBody LoginV2Body body, @RequestHeader(value = "x-rpc-device_id", required = false) String device_id, @RequestHeader(value = "x-rpc-channel_id", required = false) Integer channel_id, HttpServletRequest request) throws JsonProcessingException {
-        if(body == null || body.getDevice() == null || body.getData() == null || body.getSign() == null || body.getApp_id() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Signature Error", null));
+    public ResponseEntity<LinkedHashMap<String, Object>> SendLoginV2(@RequestBody GntLoginV2Body body, @RequestHeader(value = "x-rpc-device_id") String device_id, HttpServletRequest request) throws JsonProcessingException {
+        Integer appId = body.getApp_id();
+        Integer channelId = body.getChannel_id();
+        LoginV2Data bodyData = Jackson.fromJsonString(body.getData(), LoginV2Data.class);
+        String signature = body.getSign();
+
+        if(appId == null || channelId == null || device_id == null || signature == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
         }
 
-        if(body.getApp_id() != ApplicationId.GENSHIN_RELEASE.getValue() &&
-                body.getApp_id() != ApplicationId.GENSHIN_SANDBOX_OVERSEAS.getValue() &&
-                body.getApp_id() != ApplicationId.GENSHIN_SANDBOX_CHINA.getValue()) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter Error", null));
-        }
-
-        if(body.getChannel_id() == null || !body.getChannel_id().equals(channel_id) || channel_id > 1) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "Parameter Error", null));
+        if(appId != ApplicationId.GENSHIN_RELEASE.getValue() &&
+                appId != ApplicationId.GENSHIN_SANDBOX_OVERSEAS.getValue() &&
+                appId != ApplicationId.GENSHIN_SANDBOX_CHINA.getValue()) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
         }
 
         if(!body.getDevice().equals(device_id)) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "The current network environment is at risk.", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "请求失败，当前网络环境存在风险", null));
         }
 
-        LoginV2Data bodyData = Jackson.fromJsonString(body.getData(), LoginV2Data.class);
+        if(!isDebug()) {
+            try {
+                String hmac = HMAC.createHMACHash(Utils.generateMessage(new LinkedHashMap<>() {{
+                    put("app_id", body.getApp_id());
+                    put("channel_id", body.getChannel_id());
+                    put("data", body.getData());
+                    put("device", body.getDevice());
+                }}), Config.getRegionVar().sdkenv_hmac_key).toLowerCase();
 
-        try {
-            String hmac = HMAC.createHMACHash(Utils.generateMessage(new LinkedHashMap<>() {{
-                put("app_id", body.getApp_id());
-                put("channel_id", body.getChannel_id());
-                put("data", body.getData());
-                put("device", body.getDevice());
-            }}), Config.getRegionVar().sdkenv_hmac_key).toLowerCase();
+                if(!body.getSign().equals(hmac)) {
+                    return ResponseEntity.ok(this.makeResponse(Retcode.RET_MISSING_CONFIGURATION, "签名错误", null));
+                }
 
-            if(!body.getSign().equals(hmac)) {
-                return ResponseEntity.ok(this.makeResponse(Retcode.RET_MISSING_CONFIGURATION, "Signature error", null));
+            }catch (Exception ignored) {
+                return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "签名错误", null));
             }
-
-        }catch (Exception ignored) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_SYSTEM_ERROR, "HMAC error.", null));
         }
 
         Account account = Database.findAccountByToken(bodyData.getToken());
         if(account == null) {
             account = Database.findAccountByDeviceId(body.getDevice());
-            if(account == null) {
-                return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_INVALID_ACCOUNT, "Please log in again.", null));
+            if(account == null || (!account.getRealPersonOperationName().equals("None") && account.getRequireRealPerson())) {
+                return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_INVALID_ACCOUNT, "请重新登录", null));
             }
         }
 
@@ -109,6 +110,7 @@ public class GranterLogin implements org.httpsrv.ResponseHandler {
     /**
      *  Source: <a href="https://hk4e-sdk-os.hoyoverse.com/hk4e_global/combo/granter/login/beforeVerify">https://hk4e-sdk-os.hoyoverse.com/hk4e_global/combo/granter/login/beforeVerify</a><br><br>
      *  Methods: GET, POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - account_id: Application id<br>
      *      - combo_token: Session token<br>
@@ -123,7 +125,8 @@ public class GranterLogin implements org.httpsrv.ResponseHandler {
         return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
     }
 
-    @Getter
+    @lombok.Getter
+    @SuppressWarnings("unused")
     private static class LoginV2Data {
         private String uid;
         private Boolean guest;

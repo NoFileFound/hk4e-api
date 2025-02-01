@@ -5,7 +5,7 @@ import java.util.LinkedHashMap;
 import org.httpsrv.algorithms.Random;
 import org.httpsrv.conf.Config;
 import org.httpsrv.data.Retcode;
-import org.httpsrv.data.body.RiskyCheckBody;
+import org.httpsrv.data.body.account.RiskyCheckBody;
 import org.httpsrv.thirdparty.GeetestLib;
 import org.httpsrv.utils.Utils;
 import org.springframework.http.ResponseEntity;
@@ -26,25 +26,21 @@ public class Risky implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://api-account-os.hoyoverse.com/account/risky/api/check">https://api-account-os.hoyoverse.com/account/risky/api/check</a><br><br>
-     *  Method: POST<br><br>
-     *  Parameters:<br><br>
+     *  Method: POST<br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
      *      - action_type: Action type<br>
      *      - api_name: Channel id<br>
      *      - username: Account name<br>
      *      - mobile: Mobile number (mobile login)<br>
      */
     @PostMapping("check")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendRiskyCheck(@RequestBody RiskyCheckBody body, @RequestHeader(value = "x-rpc-game_biz", required = false) String game_biz, @RequestHeader(value = "x-rpc-language", required = false) String lang, @RequestHeader(value = "x-rpc-channel_id", required = false) Integer channel_id, @RequestHeader(value = "x-rpc-device_id", required = false) String device_id, HttpServletRequest request) {
-        if(body.getAction_type() == null || body.getApi_name() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_RISKY_INVALID_REQUEST, "Your request poses a security risk.", null));
-        }
+    public ResponseEntity<LinkedHashMap<String, Object>> SendRiskyCheck(@RequestBody RiskyCheckBody body, @RequestHeader(value = "x-rpc-game_biz") String game_biz, @RequestHeader(value = "x-rpc-language") String lang, @RequestHeader(value = "x-rpc-channel_id") Integer channel_id, @RequestHeader(value = "x-rpc-device_id") String device_id, HttpServletRequest request) {
+        String actionType = body.getAction_type();
+        String apiName = body.getApi_name();
 
-        if(body.getMobile() == null && body.getUsername() == null && !body.getAction_type().equals("device_grant") && !body.getAction_type().equals("bind_mobile")) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_RISKY_INVALID_REQUEST, "Your request poses a security risk.", null));
-        }
-
-        if(game_biz == null || !Utils.checkBizName(game_biz) || lang == null || !Utils.checkGameLanguage(lang) || channel_id == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_RISKY_INVALID_REQUEST, "Your request poses a security risk.", null));
+        if(actionType == null || apiName == null || game_biz == null || !Utils.checkBizName(game_biz) || lang == null || !Utils.checkGameLanguage(lang) || channel_id == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_RISKY_INVALID_REQUEST, "你的请求存在安全风险", null));
         }
 
         LinkedHashMap<String, Object> data = new LinkedHashMap<>();

@@ -25,8 +25,9 @@ public class Hyp implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getGamePackages">https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getGamePackages</a><br><br>
-     *  Method: GET<br><br>
-     *  Parameters:<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
      *      - launcher_id: Launcher id<br>
      *      - game_ids: List of games<br>
      */
@@ -64,8 +65,9 @@ public class Hyp implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getGameContent">https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getGameContent</a><br><br>
-     *  Method: GET<br><br>
-     *  Parameters:<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
      *      - launcher_id: Launcher id<br>
      *      - game_id: Game id<br>
      *      - language: language<br>
@@ -95,8 +97,9 @@ public class Hyp implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getAllGameBasicInfo">https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getAllGameBasicInfo</a><br><br>
-     *  Method: GET<br><br>
-     *  Parameters:<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
      *      - launcher_id: Launcher id<br>
      *      - game_id: Game id<br>
      *      - language: language<br>
@@ -122,8 +125,9 @@ public class Hyp implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getGameBranches">https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getGameBranches</a><br><br>
-     *  Method: GET<br><br>
-     *  Parameters:<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
      *      - launcher_id: Launcher id<br>
      *      - game_ids: List of games<br>
      */
@@ -155,8 +159,9 @@ public class Hyp implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getGamePlugins">https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getGamePlugins</a><br><br>
-     *  Method: GET<br><br>
-     *  Parameters:<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
      *      - launcher_id: Launcher id<br>
      *      - game_ids: List of games<br>
      */
@@ -181,13 +186,14 @@ public class Hyp implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getGames">https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getGames</a><br><br>
-     *  Method: GET<br><br>
-     *  Parameters:<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
      *      - launcher_id: Launcher id<br>
      *      - language: Language<br>
      */
     @GetMapping("getGames")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendGames(String launcher_id, String language) {
+    public ResponseEntity<LinkedHashMap<String, Object>> SendGames(String launcher_id) {
         if(launcher_id == null || !Config.getPropertiesVar().launcherIds.contains(launcher_id)) {
             return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "launcher not found", null));
         }
@@ -199,8 +205,9 @@ public class Hyp implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getGameDeprecatedFileConfigs">https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getGameDeprecatedFileConfigs</a><br><br>
-     *  Method: GET<br><br>
-     *  Parameters:<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
      *      - launcher_id: Launcher id<br>
      *      - game_ids: List of games<br>
      *      - sub_channel_id: Sub channel id<br>
@@ -226,8 +233,9 @@ public class Hyp implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getGameChannelSDKs">https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getGameChannelSDKs</a><br><br>
-     *  Method: GET<br><br>
-     *  Parameters:<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
      *      - launcher_id: Launcher id<br>
      *      - game_ids: List of games<br>
      *      - sub_channel_id: Sub channel id<br>
@@ -255,8 +263,9 @@ public class Hyp implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getGameConfigs">https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getGameConfigs</a><br><br>
-     *  Method: GET<br><br>
-     *  Parameters:<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
      *      - launcher_id: Launcher id<br>
      *      - game_ids: List of games<br>
      */
@@ -291,8 +300,9 @@ public class Hyp implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getAgreementVersion">https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getAgreementVersion</a><br><br>
-     *  Method: GET<br><br>
-     *  Parameters:<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
      *      - launcher_id: Launcher id<br>
      *      - language: language<br>
      */
@@ -312,8 +322,9 @@ public class Hyp implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getFEPackage">https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getFEPackage</a><br><br>
-     *  Method: GET<br><br>
-     *  Parameters:<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
      *      - launcher_id: Launcher id<br>
      */
     @GetMapping("getFEPackage")
@@ -337,8 +348,9 @@ public class Hyp implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getNotification">https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getNotification</a><br><br>
-     *  Method: GET<br><br>
-     *  Parameters:<br><br>
+     *  Method: GET<br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
      *      - language: Language<br>
      *      - launcher_id: Launcher id<br>
      *      - type: notification type<br>

@@ -112,7 +112,8 @@ public class Region {
 
     /**
      *  Source: <a href="https://dispatchosglobal.yuanshen.com/query_region_list">https://dispatchosglobal.yuanshen.com/query_region_list</a><br><br>
-     *  Methods: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: text/plain<br><br>
      *  Parameters:<br>
      *      - version: Game version<br>
      *      - lang: Language id<br>
@@ -134,7 +135,8 @@ public class Region {
 
     /**
      *  Source: <a href="https://dispatchosglobal.yuanshen.com/query_cur_region">https://dispatchosglobal.yuanshen.com/query_cur_region</a><br><br>
-     *  Methods: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: text/plain<br><br>
      *  Parameters:<br>
      *      - version: Game version<br>
      *      - lang: Language id<br>
@@ -201,7 +203,8 @@ public class Region {
 
     /**
      *  Source: <a href="https://dispatchosglobal.yuanshen.com/query_security_file">https://dispatchosglobal.yuanshen.com/query_security_file</a><br><br>
-     *  Methods: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: text/plain<br><br>
      *  Parameters:<br>
      *      - file_key: Game version<br>
      */
@@ -213,7 +216,8 @@ public class Region {
 
     /**
      *  Source: <a href="https://hk4e-beta-sdk-os.hoyoverse.com/dispatch/dispatch/getGateAddress">https://hk4e-beta-sdk-os.hoyoverse.com/dispatch/dispatch/getGateAddress</a><br><br>
-     *  Methods: GET<br><br>
+     *  Method: GET<br>
+     *  Content-Type: text/plain<br><br>
      *  Parameters:<br>
      *      - region: Region name<br>
      */

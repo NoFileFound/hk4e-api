@@ -5,9 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.httpsrv.data.ApplicationId;
 import org.httpsrv.data.Retcode;
-import org.httpsrv.data.body.QrCodeConfirmBody;
-import org.httpsrv.data.body.QrCodeFetchBody;
-import org.httpsrv.data.body.QrCodeQueryBody;
+import org.httpsrv.data.body.panda.*;
 import org.httpsrv.database.Database;
 import org.httpsrv.database.entity.Account;
 import org.httpsrv.database.entity.Ticket;
@@ -33,7 +31,8 @@ public class Panda implements org.httpsrv.ResponseHandler {
     /**
      *  Source: <a href="https://hk4e-sdk.mihoyo.com/hk4e_cn/combo/panda/qrcode/confirm">https://hk4e-sdk.mihoyo.com/hk4e_cn/combo/panda/qrcode/confirm</a><br><br>
      *  Method: POST<br>
-     *  Parameters:<br><br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
      *      - app_id: Application id<br>
      *      - ticket: Ticket id<br>
      *      - device: Device id<br>
@@ -43,19 +42,22 @@ public class Panda implements org.httpsrv.ResponseHandler {
      */
     @RequestMapping(value = "confirm")
     public ResponseEntity<LinkedHashMap<String, Object>> SendConfirmQRcode(@RequestBody QrCodeConfirmBody body) {
-        if(body == null || body.getTicket() == null || body.getApp_id() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "System request failed, please return and try again", null));
+        String actionTicket = body.getTicket();
+        Integer appId = body.getApp_id();
+
+        if(actionTicket == null || appId == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
         }
 
-        if(body.getApp_id() != ApplicationId.GENSHIN_RELEASE.getValue() &&
-                body.getApp_id() != ApplicationId.GENSHIN_SANDBOX_OVERSEAS.getValue() &&
-                body.getApp_id() != ApplicationId.GENSHIN_SANDBOX_CHINA.getValue()) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "System request failed, please return and try again", null));
+        if(appId != ApplicationId.GENSHIN_RELEASE.getValue() &&
+                appId != ApplicationId.GENSHIN_SANDBOX_OVERSEAS.getValue() &&
+                appId != ApplicationId.GENSHIN_SANDBOX_CHINA.getValue()) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
         }
 
-        Ticket qrTicker = Database.findTicket(body.getTicket());
+        Ticket qrTicker = Database.findTicket(actionTicket, "QRLogin_PC");
         if(qrTicker == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_QRCODE_EXPIRED, "The QR code has expired, please regenerate the QR code", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_QRCODE_EXPIRED, "二维码已过期，请重新生成二维码", null));
         }
 
         if(qrTicker.getState() == 1) {
@@ -69,97 +71,107 @@ public class Panda implements org.httpsrv.ResponseHandler {
     /**
      *  Source: <a href="https://hk4e-sdk.mihoyo.com/hk4e_cn/combo/panda/qrcode/scan">https://hk4e-sdk.mihoyo.com/hk4e_cn/combo/panda/qrcode/scan</a><br><br>
      *  Method: POST<br>
-     *  Parameters:<br><br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
      *      - app_id: Application id<br>
      *      - ticket: Ticket id<br>
      *      - device: Device id<br>
      */
     @RequestMapping(value = "scan")
-    public ResponseEntity<LinkedHashMap<String, Object>> SendScanQRCode(@RequestBody QrCodeQueryBody body) {
-        if(body == null || body.getTicket() == null || body.getApp_id() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "System request failed, please return and try again", null));
+    public ResponseEntity<LinkedHashMap<String, Object>> SendScanQRCode(@RequestBody QrCodeScanBody body) {
+        String actionTicket = body.getTicket();
+        Integer appId = body.getApp_id();
+
+        if(actionTicket == null || appId == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
         }
 
-        if(body.getApp_id() != ApplicationId.GENSHIN_RELEASE.getValue() &&
-                body.getApp_id() != ApplicationId.GENSHIN_SANDBOX_OVERSEAS.getValue() &&
-                body.getApp_id() != ApplicationId.GENSHIN_SANDBOX_CHINA.getValue()) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "System request failed, please return and try again", null));
+        if(appId != ApplicationId.GENSHIN_RELEASE.getValue() &&
+                appId != ApplicationId.GENSHIN_SANDBOX_OVERSEAS.getValue() &&
+                appId != ApplicationId.GENSHIN_SANDBOX_CHINA.getValue()) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
         }
 
-        Ticket qrTicker = Database.findTicket(body.getTicket());
+        Ticket qrTicker = Database.findTicket(body.getTicket(), "QRLogin_PC");
         if(qrTicker == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_QRCODE_EXPIRED, "The QR code has expired, please regenerate the QR code", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_QRCODE_EXPIRED, "二维码已过期，请重新生成二维码", null));
         }
 
         if(qrTicker.getState() == 0) {
             qrTicker.setState(1);
+            qrTicker.setModifiedAt(String.valueOf(System.currentTimeMillis() / 1000));
             qrTicker.save();
         }
 
-        LinkedHashMap<String, Object> data = new LinkedHashMap<>();
-        data.put("passport_qr_url", "");
-
-        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>() {{
+            put("passport_qr_url", "");
+        }}));
     }
 
     /**
      *  Source: <a href="https://hk4e-sdk.mihoyo.com/hk4e_cn/combo/panda/qrcode/fetch">https://hk4e-sdk.mihoyo.com/hk4e_cn/combo/panda/qrcode/fetch</a><br><br>
      *  Method: POST<br>
-     *  Parameters:<br><br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
      *      - app_id: Application id<br>
      *      - device: Device id<br>
      */
     @RequestMapping(value = "fetch")
     public ResponseEntity<LinkedHashMap<String, Object>> SendQRCodeFetch(@RequestBody QrCodeFetchBody body) {
-        if(body == null || body.getApp_id() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "System request failed, please return and try again", null));
+        Integer appId = body.getApp_id();
+
+        if(appId == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
         }
 
-        if(body.getApp_id() != ApplicationId.GENSHIN_RELEASE.getValue() &&
-                body.getApp_id() != ApplicationId.GENSHIN_SANDBOX_OVERSEAS.getValue() &&
-                body.getApp_id() != ApplicationId.GENSHIN_SANDBOX_CHINA.getValue()) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "System request failed, please return and try again", null));
+        if(appId != ApplicationId.GENSHIN_RELEASE.getValue() &&
+                appId != ApplicationId.GENSHIN_SANDBOX_OVERSEAS.getValue() &&
+                appId != ApplicationId.GENSHIN_SANDBOX_CHINA.getValue()) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
         }
 
         Long time = (System.currentTimeMillis() + 60000) / 1000;
-        Ticket qrTicket = new Ticket("QRLogin", time);
+        Ticket qrTicket = new Ticket("QRLogin_PC", time);
         qrTicket.save();
 
-        LinkedHashMap<String, Object> data = new LinkedHashMap<>();
-        data.put("url", String.format("https://user.mihoyo.com/qr_code_in_game.html?app_id=%d&app_name=原神&bbs=true&biz_key=hk4e_cn&expire=%d&ticket=%s", body.getApp_id(), time, qrTicket.getId()));
-
-        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", data));
+        return ResponseEntity.ok(this.makeResponse(Retcode.RETCODE_SUCC, "OK", new LinkedHashMap<>() {{
+            put("url", String.format("https://user.mihoyo.com/qr_code_in_game.html?app_id=%d&app_name=原神&bbs=true&biz_key=hk4e_cn&expire=%d&ticket=%s", appId, time, qrTicket.getId()));
+        }}));
     }
 
     /**
      *  Source: <a href="https://hk4e-sdk.mihoyo.com/hk4e_cn/combo/panda/qrcode/query">https://hk4e-sdk.mihoyo.com/hk4e_cn/combo/panda/qrcode/query</a><br><br>
      *  Method: POST<br>
-     *  Parameters:<br><br>
+     *  Content-Type: application/json<br><br>
+     *  Parameters:<br>
      *      - app_id: Application id<br>
      *      - device: Device id<br>
      *      - ticket: Ticket id<br>
      */
     @RequestMapping(value = "query")
     public ResponseEntity<LinkedHashMap<String, Object>> SendQueryQRCode(@RequestBody QrCodeQueryBody body, HttpServletRequest request) throws JsonProcessingException {
-        if(body == null || body.getApp_id() == null || body.getTicket() == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "System request failed, please return and try again", null));
+        String actionTicket = body.getTicket();
+        Integer appId = body.getApp_id();
+
+        if(actionTicket == null || appId == null) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_PARAMETER_ERROR, "参数错误", null));
         }
 
-        if(body.getApp_id() != ApplicationId.GENSHIN_RELEASE.getValue() &&
-                body.getApp_id() != ApplicationId.GENSHIN_SANDBOX_OVERSEAS.getValue() &&
-                body.getApp_id() != ApplicationId.GENSHIN_SANDBOX_CHINA.getValue()) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "System request failed, please return and try again", null));
+        if(appId != ApplicationId.GENSHIN_RELEASE.getValue() &&
+                appId != ApplicationId.GENSHIN_SANDBOX_OVERSEAS.getValue() &&
+                appId != ApplicationId.GENSHIN_SANDBOX_CHINA.getValue()) {
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_CANCEL, "系统请求失败，请返回重试", null));
         }
 
         Long currentTime = System.currentTimeMillis() / 1000;
-        Ticket qrTicket = Database.findTicket(body.getTicket());
+        Ticket qrTicket = Database.findTicket(actionTicket, "QRLogin_PC");
         if(qrTicket == null) {
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_QRCODE_EXPIRED, "The QR code has expired, please regenerate the QR code", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_QRCODE_EXPIRED, "二维码已过期，请重新生成二维码", null));
         }
 
         if (currentTime - qrTicket.getTime() > 0) {
             qrTicket.delete();
-            return ResponseEntity.ok(this.makeResponse(Retcode.RET_QRCODE_EXPIRED, "The QR code has expired, please regenerate the QR code", null));
+            return ResponseEntity.ok(this.makeResponse(Retcode.RET_QRCODE_EXPIRED, "二维码已过期，请重新生成二维码", null));
         }
 
         LinkedHashMap<String, Object> data = new LinkedHashMap<>();
@@ -181,9 +193,6 @@ public class Panda implements org.httpsrv.ResponseHandler {
         }
         else if(qrTicket.getState() == 2) {
             Account account = Database.findAccountByDeviceId(body.getDevice());
-			if(account == null) {
-				return ResponseEntity.ok(this.makeResponse(Retcode.RET_LOGIN_NETWORK_AT_RISK, "QR Code is not available now.", null));
-			}
 
             data.put("stat", "Confirmed");
             data.put("payload", new LinkedHashMap<>(Map.of(

@@ -23,7 +23,8 @@ public class Launcher implements org.httpsrv.ResponseHandler {
 
     /**
      *  Source: <a href="https://hk4e-launcher-static.mihoyo.com/hk4e_cn/mdk/launcher/api/resource">https://hk4e-launcher-static.mihoyo.com/hk4e_cn/mdk/launcher/api/resource</a><br><br>
-     *  Method: POST<br><br>
+     *  Method: POST<br>
+     *  Content-Type: application/json<br><br>
      *  Parameters:<br>
      *      - channel_id: Channel id<br>
      *      - key: Launcher key<br>
